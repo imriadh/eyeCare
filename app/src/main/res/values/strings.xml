@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Eye Care</string>
+    <string name="blue_light_filter">Blue Light Filter</string>
+    <string name="reminders">20-20-20 Reminders</string>
+    <string name="permission_required">Permission Required</string>
+    <string name="overlay_permission_message">This feature needs permission to display over other apps</string>
+    <string name="notification_permission_message">This feature needs notification permission</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="active">Active</string>
+    <string name="inactive">Inactive</string>
+    <string name="about_20_20_20">About 20-20-20 Rule</string>
+    <string name="rule_description">Every 20 minutes, look at something 20 feet away for 20 seconds to reduce eye strain.</string>
+</resources>
