@@ -65,14 +65,14 @@ sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 # Navigate to your project
 cd /workspaces/eyeCare
 
-# Make gradlew executable
-chmod +x gradlew
+# Setup Android SDK (one-time only)
+./setup-android-sdk.sh
+source ~/.bashrc
 
-# Build debug APK
-./gradlew assembleDebug
+# Build debug APK (without daemon to avoid memory issues)
+./gradlew --no-daemon assembleDebug
 
 # Or use the build script
-chmod +x build-apk.sh
 ./build-apk.sh
 ```
 
