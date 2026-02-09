@@ -128,6 +128,26 @@ class TimerNotificationService : Service() {
 
     private fun updateNotification() {
         val context = applicationContext
+        val timeRemaining = PreferencesHelper.getTimeRemainingMillis(context)
+        
+        // Track break completion when timer reaches 0
+        if (timeRemaining <= 1000 && !PreferencesHelper.isPaused(context)) {
+            // Check if we haven't already recorded this break
+            val lastBreakTime = context.getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
+                .getLong("last_break_recorded_time", 0L)
+            val currentTime = System.currentTimeMillis()
+            
+            // Only record if it's been more than 30 seconds since last break
+            // This prevents duplicate recordings
+            if (currentTime - lastBreakTime > 30000) {
+                PreferencesHelper.recordBreakCompleted(context)
+                context.getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putLong("last_break_recorded_time", currentTime)
+                    .apply()
+            }
+        }
+        
         val notification = createTimerNotification(context)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
