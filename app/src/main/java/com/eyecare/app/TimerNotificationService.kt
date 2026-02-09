@@ -48,6 +48,10 @@ class TimerNotificationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Always start foreground immediately
+        val notification = createTimerNotification(applicationContext)
+        startForeground(NOTIFICATION_ID, notification)
+        
         when (intent?.action) {
             ACTION_PAUSE_RESUME -> handlePauseResume()
             ACTION_RESET -> handleReset()

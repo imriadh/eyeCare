@@ -208,12 +208,26 @@ fun EyeCareHomeScreen(
             
             // Countdown Timer Card
             if (remindersEnabled && !isPaused) {
-                CountdownTimerCard(timeRemainingMillis)
+                CountdownTimerCard(
+                    timeRemainingMillis = timeRemainingMillis,
+                    onTimerClick = {
+                        // Pause the timer
+                        val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L) // Pause for 1 hour
+                        PreferencesHelper.setPauseUntil(context, pauseUntil)
+                        isPaused = true
+                    }
+                )
             }
             
             // Paused Status Card
             if (isPaused) {
-                PausedStatusCard()
+                PausedStatusCard(
+                    onResume = {
+                        PreferencesHelper.setPauseUntil(context, 0)
+                        PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        isPaused = false
+                    }
+                )
             }
             
             // Reminders Card
@@ -261,6 +275,11 @@ fun EyeCareHomeScreen(
                     PreferencesHelper.setPauseUntil(context, 0)
                     isPaused = false
                     timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+                    // Restart notification service
+                    if (remindersEnabled) {
+                        TimerNotificationService.stopService(context)
+                        TimerNotificationService.startService(context)
+                    }
                 },
                 onRequestPermission = onRequestNotificationPermission,
                 isPaused = isPaused
@@ -846,7 +865,7 @@ private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cyc
 }
 
 @Composable
-fun CountdownTimerCard(timeRemainingMillis: Long) {
+fun CountdownTimerCard(timeRemainingMillis: Long, onTimerClick: () -> Unit) {
     val minutes = (timeRemainingMillis / 1000 / 60).toInt()
     val seconds = ((timeRemainingMillis / 1000) % 60).toInt()
     val totalSeconds = (timeRemainingMillis / 1000).toFloat()
@@ -854,7 +873,9 @@ fun CountdownTimerCard(timeRemainingMillis: Long) {
     val progress = 1f - (totalSeconds / intervalSeconds)
     
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onTimerClick() },
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
@@ -867,7 +888,7 @@ fun CountdownTimerCard(timeRemainingMillis: Long) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "🍅 Pomodoro Timer",
+                text = "⏰ Next Break",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -896,7 +917,7 @@ fun CountdownTimerCard(timeRemainingMillis: Long) {
                         fontSize = 48.sp
                     )
                     Text(
-                        text = "until break",
+                        text = "remaining",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -904,9 +925,9 @@ fun CountdownTimerCard(timeRemainingMillis: Long) {
             }
             
             Text(
-                text = "Focus on your work, we'll remind you!",
+                text = "Tap to pause • Double tap to resume",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
         }
@@ -914,9 +935,11 @@ fun CountdownTimerCard(timeRemainingMillis: Long) {
 }
 
 @Composable
-fun PausedStatusCard() {
+fun PausedStatusCard(onResume: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onResume() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer
         )
@@ -924,25 +947,37 @@ fun PausedStatusCard() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "⏸️",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Column {
+            Box(
+                modifier = Modifier.size(56.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Reminders Paused",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "You won't receive notifications during this time",
-                    style = MaterialTheme.typography.bodySmall
+                    text = "⏸️",
+                    fontSize = 32.sp
                 )
             }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Reminders Paused",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Tap anywhere to resume",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Resume",
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onTertiaryContainer
+            )
         }
     }
 }
