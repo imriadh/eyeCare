@@ -860,7 +860,7 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
 
 private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cycles: Int) {
     try {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as AlarmManager
         
         // Check if we can schedule exact alarms (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -1115,6 +1115,7 @@ fun RemindersCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 8.dp else 2.dp)
     ) {
+        Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -1316,19 +1317,7 @@ fun RemindersCard(
                     }
                 }
                 
-                // Pause and Reset Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilledTonalButton(
-                        onClick = onPause,
-                        modifier = Modifier.weight(1f),
-                        enabled = !isPaused,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (!isPaused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {Button (removed Reset - now in timer card)
+                // Pause Button (removed Reset - now in timer card)
                 FilledTonalButton(
                     onClick = onPause,
                     modifier = Modifier.fillMaxWidth(),
@@ -1346,7 +1335,19 @@ fun RemindersCard(
                     Text(
                         text = if (isPaused) "Paused" else "Pause",
                         fontWeight = FontWeight.SemiBold
-                    )Color = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BreakInstructionsCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
         )
     ) {
         Column(
