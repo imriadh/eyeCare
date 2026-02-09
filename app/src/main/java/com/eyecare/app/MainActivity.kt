@@ -65,6 +65,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Initialize reminders on first launch if enabled by default
+        initializeReminders()
+        
         setContent {
             EyeCareTheme {
                 Surface(
@@ -81,6 +84,26 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+    
+    private fun initializeReminders() {
+        // Check if this is first launch and reminders are enabled by default
+        val prefs = getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
+        val isFirstLaunch = !prefs.contains("reminders_enabled")
+        
+        if (isFirstLaunch && PreferencesHelper.areRemindersEnabled(this)) {
+            // Set initial notification time so timer starts from full interval
+            if (PreferencesHelper.getLastNotificationTime(this) == 0L) {
+                PreferencesHelper.setLastNotificationTime(this, System.currentTimeMillis())
+            }
+            
+            // Start the timer notification service
+            TimerNotificationService.startService(this)
+            
+            // Schedule periodic reminders
+            val interval = PreferencesHelper.getReminderInterval(this)
+            scheduleEyeCareReminders(this, interval)
         }
     }
     

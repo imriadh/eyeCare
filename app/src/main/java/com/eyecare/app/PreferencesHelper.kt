@@ -78,7 +78,7 @@ object PreferencesHelper {
     
     // Reminders Enabled
     fun areRemindersEnabled(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_REMINDERS_ENABLED, false)
+        return getPrefs(context).getBoolean(KEY_REMINDERS_ENABLED, true)
     }
     
     fun setRemindersEnabled(context: Context, enabled: Boolean) {
