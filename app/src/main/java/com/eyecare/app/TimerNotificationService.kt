@@ -55,7 +55,11 @@ class TimerNotificationService : Service() {
         when (intent?.action) {
             ACTION_PAUSE_RESUME -> handlePauseResume()
             ACTION_RESET -> handleReset()
-            ACTION_STOP -> stopSelf()
+            ACTION_STOP -> {
+                // Disable reminders when user closes notification
+                PreferencesHelper.setRemindersEnabled(applicationContext, false)
+                stopSelf()
+            }
             else -> startTimerUpdates()
         }
         
@@ -152,6 +156,17 @@ class TimerNotificationService : Service() {
             resetIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        
+        // Close action
+        val closeIntent = Intent(context, TimerNotificationService::class.java).apply {
+            action = ACTION_STOP
+        }
+        val closePendingIntent = PendingIntent.getService(
+            context,
+            3,
+            closeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val pauseResumeText = if (isPaused) "▶️ Resume" else "⏸️ Pause"
 
@@ -159,7 +174,7 @@ class TimerNotificationService : Service() {
             .setContentTitle(timerText)
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setOngoing(true)
+            .setOngoing(false)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openAppPendingIntent)
@@ -172,6 +187,11 @@ class TimerNotificationService : Service() {
                 android.R.drawable.ic_menu_revert,
                 "🔄 Reset",
                 resetPendingIntent
+            )
+            .addAction(
+                android.R.drawable.ic_delete,
+                "✕ Close",
+                closePendingIntent
             )
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .build()

@@ -791,8 +791,13 @@ fun TimePickerDialog(
     onTimeSelected: (hour: Int, minute: Int) -> Unit
 ) {
     val currentTime = Calendar.getInstance()
-    var selectedHour by remember { mutableStateOf(currentTime.get(Calendar.HOUR_OF_DAY)) }
+    val currentHour24 = currentTime.get(Calendar.HOUR_OF_DAY)
+    val initialHour12 = if (currentHour24 == 0) 12 else if (currentHour24 > 12) currentHour24 - 12 else currentHour24
+    val initialAmPm = if (currentHour24 < 12) "AM" else "PM"
+    
+    var selectedHour by remember { mutableStateOf(initialHour12) }
     var selectedMinute by remember { mutableStateOf(currentTime.get(Calendar.MINUTE)) }
+    var selectedAmPm by remember { mutableStateOf(initialAmPm) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -807,9 +812,11 @@ fun TimePickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Hour selector
+                    // Hour selector (1-12)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        IconButton(onClick = { selectedHour = (selectedHour + 1) % 24 }) {
+                        IconButton(onClick = { 
+                            selectedHour = if (selectedHour == 12) 1 else selectedHour + 1
+                        }) {
                             Icon(Icons.Default.KeyboardArrowUp, "Increase hour")
                         }
                         Text(
@@ -817,7 +824,9 @@ fun TimePickerDialog(
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        IconButton(onClick = { selectedHour = if (selectedHour == 0) 23 else selectedHour - 1 }) {
+                        IconButton(onClick = { 
+                            selectedHour = if (selectedHour == 1) 12 else selectedHour - 1
+                        }) {
                             Icon(Icons.Default.KeyboardArrowDown, "Decrease hour")
                         }
                     }
@@ -836,11 +845,37 @@ fun TimePickerDialog(
                             Icon(Icons.Default.KeyboardArrowDown, "Decrease minute")
                         }
                     }
+                    // AM/PM selector
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(onClick = { 
+                            selectedAmPm = if (selectedAmPm == "AM") "PM" else "AM"
+                        }) {
+                            Icon(Icons.Default.KeyboardArrowUp, "Toggle AM/PM")
+                        }
+                        Text(
+                            text = selectedAmPm,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { 
+                            selectedAmPm = if (selectedAmPm == "AM") "PM" else "AM"
+                        }) {
+                            Icon(Icons.Default.KeyboardArrowDown, "Toggle AM/PM")
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { onTimeSelected(selectedHour, selectedMinute) }) {
+            Button(onClick = { 
+                // Convert 12-hour to 24-hour format
+                val hour24 = when {
+                    selectedAmPm == "AM" && selectedHour == 12 -> 0
+                    selectedAmPm == "PM" && selectedHour != 12 -> selectedHour + 12
+                    else -> selectedHour
+                }
+                onTimeSelected(hour24, selectedMinute)
+            }) {
                 Text("OK")
             }
         },
@@ -1104,7 +1139,6 @@ fun RemindersCard(
     onIntervalChange: (Float) -> Unit,
     onSoundToggle: (Boolean) -> Unit,
     onPause: () -> Unit,
-    onReset: () -> Unit,
     onRequestPermission: () -> Unit,
     isPaused: Boolean
 ) {
