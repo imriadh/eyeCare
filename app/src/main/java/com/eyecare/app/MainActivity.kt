@@ -184,6 +184,7 @@ fun EyeCareHomeScreen(
     var timeRemainingMillis by remember { mutableStateOf(0L) }
     var isPaused by remember { mutableStateOf(PreferencesHelper.isPaused(context)) }
     var showPauseDialog by remember { mutableStateOf(false) }
+    var showPauseDialog by remember { mutableStateOf(false) }
     
     // Update countdown timer
     LaunchedEffect(remindersEnabled) {
@@ -508,7 +509,7 @@ fun SleepCycleCard(cycles: Int, wakeUpTime: Calendar, onSetAlarm: () -> Unit) {
             }
             
             FilledTonalButton(onClick = onSetAlarm) {
-                Icon(Icons.Default.AddAlarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Set Alarm")
             }
