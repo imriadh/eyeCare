@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Eye Shape (Outer) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 54,35 C 38,35 26,45 19,54 C 26,63 38,73 54,73 C 70,73 82,63 89,54 C 82,45 70,35 54,35 Z"/>
+    
+    <!-- Iris -->
+    <path
+        android:fillColor="#60A5FA"
+        android:pathData="M 54,43 C 47.92,43 43,47.92 43,54 C 43,60.08 47.92,65 54,65 C 60.08,65 65,60.08 65,54 C 65,47.92 60.08,43 54,43 Z"/>
+    
+    <!-- Pupil -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M 54,48 C 50.69,48 48,50.69 48,54 C 48,57.31 50.69,60 54,60 C 57.31,60 60,57.31 60,54 C 60,50.69 57.31,48 54,48 Z"/>
+    
+    <!-- Light Reflection -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 57,51 C 56.17,51 55.5,51.67 55.5,52.5 C 55.5,53.33 56.17,54 57,54 C 57.83,54 58.5,53.33 58.5,52.5 C 58.5,51.67 57.83,51 57,51 Z"/>
+    
+    <!-- Eye lid detail (top) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 24,54 C 30,46 40,38 54,38 C 68,38 78,46 84,54"/>
+    
+    <!-- Eye lid detail (bottom) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 24,54 C 30,62 40,70 54,70 C 68,70 78,62 84,54"/>
+    
+    <!-- Shield protection icon (small) -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M 75,40 L 75,43 L 72,45 L 75,47 L 75,50 L 78,47 L 80,47 L 83,44 L 80,41 L 78,41 Z"/>
+</vector>
