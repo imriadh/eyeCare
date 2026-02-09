@@ -177,9 +177,14 @@ fun EyeCareHomeScreen(
     var showPauseDialog by remember { mutableStateOf(false) }
     
     // Update countdown timer
-    LaunchedEffect(remindersEnabled) {
-        while (remindersEnabled) {
-            timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+    LaunchedEffect(remindersEnabled, isPaused) {
+        while (true) {
+            if (remindersEnabled && !isPaused) {
+                timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+            } else if (!remindersEnabled) {
+                // Show default 20 minutes when not running
+                timeRemainingMillis = PreferencesHelper.DEFAULT_REMINDER_INTERVAL * 60 * 1000L
+            }
             isPaused = PreferencesHelper.isPaused(context)
             delay(1000) // Update every second
         }
@@ -206,26 +211,54 @@ fun EyeCareHomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             
-            // Countdown Timer Card
-            if (remindersEnabled && !isPaused) {
-                CountdownTimerCard(
-                    timeRemainingMillis = timeRemainingMillis,
-                    onTimerClick = {
-                        // Pause the timer
+            // Countdown Timer Card - Always visible
+            CountdownTimerCard(
+                timeRemainingMillis = timeRemainingMillis,
+                enabled = remindersEnabled,
+                onTimerClick = {
+                    if (remindersEnabled && !isPaused) {
+                        // Pause the timer - save current remaining time
+                        PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
                         val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L) // Pause for 1 hour
                         PreferencesHelper.setPauseUntil(context, pauseUntil)
                         isPaused = true
                     }
-                )
-            }
+                },
+                onReset = {
+                    if (remindersEnabled) {
+                        PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        PreferencesHelper.setPauseUntil(context, 0)
+                        PreferencesHelper.setPausedRemainingTime(context, 0)
+                        isPaused = false
+                        timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+                        // Restart notification service
+                        TimerNotificationService.stopService(context)
+                        TimerNotificationService.startService(context)
+                    }
+                }
+            )
             
             // Paused Status Card
             if (isPaused) {
                 PausedStatusCard(
                     onResume = {
+                        // Resume with preserved remaining time
+                        val savedRemainingTime = PreferencesHelper.getPausedRemainingTime(context)
+                        if (savedRemainingTime > 0) {
+                            // Calculate new lastNotificationTime to preserve remaining time
+                            val intervalMillis = PreferencesHelper.getReminderInterval(context) * 60 * 1000L
+                            val newLastNotificationTime = System.currentTimeMillis() - (intervalMillis - savedRemainingTime)
+                            PreferencesHelper.setLastNotificationTime(context, newLastNotificationTime)
+                        } else {
+                            // Fallback: just reset to current time
+                            PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        }
                         PreferencesHelper.setPauseUntil(context, 0)
-                        PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        PreferencesHelper.setPausedRemainingTime(context, 0)
                         isPaused = false
+                        // Restart notification service
+                        TimerNotificationService.stopService(context)
+                        TimerNotificationService.startService(context)
                     }
                 )
             }
@@ -269,17 +302,6 @@ fun EyeCareHomeScreen(
                 },
                 onPause = {
                     showPauseDialog = true
-                },
-                onReset = {
-                    PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
-                    PreferencesHelper.setPauseUntil(context, 0)
-                    isPaused = false
-                    timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
-                    // Restart notification service
-                    if (remindersEnabled) {
-                        TimerNotificationService.stopService(context)
-                        TimerNotificationService.startService(context)
-                    }
                 },
                 onRequestPermission = onRequestNotificationPermission,
                 isPaused = isPaused
@@ -838,34 +860,93 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
 
 private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cycles: Int) {
     try {
-        // Create intent for alarm
-        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
-            putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
-            putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles - Eye Care")
-            putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        // Check if we can schedule exact alarms (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                // Request permission to schedule exact alarms
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                return
+            }
         }
         
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
-        } else {
-            // Fallback: try to open clock app
-            val clockIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                setPackage("com.google.android.deskclock")
-            }
-            context.startActivity(clockIntent)
+        // Create intent for alarm receiver
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra(AlarmReceiver.EXTRA_ALARM_MESSAGE, "$cycles Sleep Cycles - Time to wake up!")
         }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Set the alarm
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                wakeUpTime.timeInMillis,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP,
+                wakeUpTime.timeInMillis,
+                pendingIntent
+            )
+        }
+        
+        // Show confirmation toast
+        android.widget.Toast.makeText(
+            context,
+            "✅ Alarm set for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))}",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+        
     } catch (e: Exception) {
-        // Silent fail - alarm app not available
         e.printStackTrace()
+        // Fallback: try to open clock app
+        try {
+            val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
+                putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
+                putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles - Eye Care")
+                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+            } else {
+                // Last resort: open clock app
+                val clockIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    setPackage("com.google.android.deskclock")
+                }
+                context.startActivity(clockIntent)
+            }
+        } catch (e2: Exception) {
+            android.widget.Toast.makeText(
+                context,
+                "❌ Unable to set alarm",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 }
 
 @Composable
-fun CountdownTimerCard(timeRemainingMillis: Long, onTimerClick: () -> Unit) {
+fun CountdownTimerCard(
+    timeRemainingMillis: Long, 
+    enabled: Boolean,
+    onTimerClick: () -> Unit,
+    onReset: () -> Unit
+) {
     val minutes = (timeRemainingMillis / 1000 / 60).toInt()
     val seconds = ((timeRemainingMillis / 1000) % 60).toInt()
     val totalSeconds = (timeRemainingMillis / 1000).toFloat()
@@ -875,9 +956,10 @@ fun CountdownTimerCard(timeRemainingMillis: Long, onTimerClick: () -> Unit) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onTimerClick() },
+            .clickable(enabled = enabled) { onTimerClick() },
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer 
+                           else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -891,7 +973,8 @@ fun CountdownTimerCard(timeRemainingMillis: Long, onTimerClick: () -> Unit) {
                 text = "⏰ Next Break",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
+                       else MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             // Circular progress indicator
@@ -904,7 +987,8 @@ fun CountdownTimerCard(timeRemainingMillis: Long, onTimerClick: () -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 12.dp,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (enabled) MaterialTheme.colorScheme.primary 
+                           else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -913,23 +997,51 @@ fun CountdownTimerCard(timeRemainingMillis: Long, onTimerClick: () -> Unit) {
                         text = String.format("%02d:%02d", minutes, seconds),
                         style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (enabled) MaterialTheme.colorScheme.primary 
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 48.sp
                     )
                     Text(
                         text = "remaining",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
+                               else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
-            Text(
-                text = "Tap to pause • Double tap to resume",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
+            if (enabled) {
+                Text(
+                    text = "Tap to pause • Double tap to resume",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+                
+                // Reset button
+                OutlinedButton(
+                    onClick = onReset,
+                    modifier = Modifier.fillMaxWidth(0.6f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Reset Timer",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            } else {
+                Text(
+                    text = "Enable reminders to start",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -1003,7 +1115,6 @@ fun RemindersCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 8.dp else 2.dp)
     ) {
-        Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -1217,40 +1328,25 @@ fun RemindersCard(
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = if (!isPaused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
                         )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isPaused) "Paused" else "Pause",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    
-                    OutlinedButton(
-                        onClick = onReset,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "🔄 Reset",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun BreakInstructionsCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {Button (removed Reset - now in timer card)
+                FilledTonalButton(
+                    onClick = onPause,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isPaused,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (!isPaused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isPaused) "Paused" else "Pause",
+                        fontWeight = FontWeight.SemiBold
+                    )Color = MaterialTheme.colorScheme.secondaryContainer
         )
     ) {
         Column(

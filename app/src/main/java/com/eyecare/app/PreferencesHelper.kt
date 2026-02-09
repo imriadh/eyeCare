@@ -17,6 +17,7 @@ object PreferencesHelper {
     private const val KEY_PAUSE_UNTIL = "pause_until"
     private const val KEY_SOUND_ENABLED = "sound_enabled"
     private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
+    private const val KEY_PAUSED_REMAINING_TIME = "paused_remaining_time"
     
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
@@ -55,6 +56,15 @@ object PreferencesHelper {
     fun isPaused(context: Context): Boolean {
         val pauseUntil = getPauseUntil(context)
         return pauseUntil > System.currentTimeMillis()
+    }
+    
+    // Paused Remaining Time
+    fun getPausedRemainingTime(context: Context): Long {
+        return getPrefs(context).getLong(KEY_PAUSED_REMAINING_TIME, 0L)
+    }
+    
+    fun setPausedRemainingTime(context: Context, timeMillis: Long) {
+        getPrefs(context).edit().putLong(KEY_PAUSED_REMAINING_TIME, timeMillis).apply()
     }
     
     // Sound Enabled
