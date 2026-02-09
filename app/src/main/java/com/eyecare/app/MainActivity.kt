@@ -29,9 +29,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.work.*
 import com.eyecare.app.ui.theme.EyeCareTheme
 import kotlinx.coroutines.delay
@@ -39,8 +36,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import android.provider.AlarmClock
 
 /**
@@ -64,8 +59,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { }
     
-    private var permissionCheckTrigger by mutableStateOf(0)
-
     private var permissionCheckTrigger by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -135,7 +128,7 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Bedtime, "Sleep") },
+                    icon = { Icon(Icons.Default.Star, "Sleep") },
                     label = { Text("Sleep") }
                 )
                 NavigationBarItem(
@@ -183,7 +176,6 @@ fun EyeCareHomeScreen(
     }
     var timeRemainingMillis by remember { mutableStateOf(0L) }
     var isPaused by remember { mutableStateOf(PreferencesHelper.isPaused(context)) }
-    var showPauseDialog by remember { mutableStateOf(false) }
     var showPauseDialog by remember { mutableStateOf(false) }
     
     // Update countdown timer
@@ -304,7 +296,6 @@ fun EyeCareHomeScreen(
             // Break Instructions Card
             BreakInstructionsCard()
         }
-    }
     
     // Pause Dialog
     if (showPauseDialog) {
