@@ -35,9 +35,10 @@
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| **MainActivity.kt** | ~330 | Main UI, permission handling, toggle controls |
+| **MainActivity.kt** | ~700 | Enhanced UI with countdown timer, slider, pause dialog |
 | **BlueLightService.kt** | ~160 | Foreground service, overlay creation, WindowManager |
-| **EyeCareWorker.kt** | ~100 | WorkManager worker, notification scheduling |
+| **EyeCareWorker.kt** | ~120 | WorkManager worker, pause check, enhanced notifications |
+| **PreferencesHelper.kt** | ~110 | Settings management, time calculations, persistence |
 
 ### Theme Files (Kotlin)
 
@@ -71,20 +72,77 @@
 
 **Check overlay permission:**
 ```kotlin
-// File: MainActivity.kt, Line ~35
+// File: MainActivity.kt, Line ~115
 Settings.canDrawOverlays(context)
 ```
 
 **Request notification permission:**
 ```kotlin
-// File: MainActivity.kt, Line ~27
+// File: MainActivity.kt, Line ~47
 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
 ```
 
 **Open overlay settings:**
 ```kotlin
-// File: MainActivity.kt, Line ~155
+// File: MainActivity.kt, Line ~238
 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+```
+
+---
+
+### Countdown Timer
+
+**Timer UI:**
+```kotlin
+// File: MainActivity.kt, Line ~277
+Text(text = String.format("%02d:%02d", minutes, seconds))
+```
+
+**Timer update loop:**
+```kotlin
+// File: MainActivity.kt, Line ~99
+LaunchedEffect(remindersEnabled) {
+    while (remindersEnabled) {
+        timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+        delay(1000) // Update every second
+    }
+}
+```
+
+**Time calculation:**
+```kotlin
+// File: PreferencesHelper.kt, Line ~84
+fun getTimeRemainingMillis(context: Context): Long
+```
+
+---
+
+### Pause/Snooze Feature
+
+**Pause dialog:**
+```kotlin
+// File: MainActivity.kt, Line ~594
+@Composable fun PauseDialog(...)
+```
+
+**Check if paused:**
+```kotlin
+// File: PreferencesHelper.kt, Line ~58
+fun isPaused(context: Context): Boolean
+```
+
+**Set pause duration:**
+```kotlin
+// File: PreferencesHelper.kt, Line ~53
+fun setPauseUntil(context: Context, timeMillis: Long)
+```
+
+**Worker pause check:**
+```kotlin
+// File: EyeCareWorker.kt, Line ~34
+if (PreferencesHelper.isPaused(context)) {
+    return Result.success() // Skip notification
+}
 ```
 
 ---
@@ -122,18 +180,47 @@ WindowManager.LayoutParams(
 
 **Schedule reminders:**
 ```kotlin
-// File: MainActivity.kt, Line ~338
+// File: MainActivity.kt, Line ~625
 PeriodicWorkRequestBuilder<EyeCareWorker>(
-    20, TimeUnit.MINUTES  // ← Change interval here
+    intervalMinutes.toLong(), TimeUnit.MINUTES  // Custom interval
 )
 ```
 
 **Send notification:**
 ```kotlin
-// File: EyeCareWorker.kt, Line ~55
+// File: EyeCareWorker.kt, Line ~60
 NotificationCompat.Builder(context, CHANNEL_ID)
-    .setContentTitle("Eye Care Reminder 👀")
-    .setContentText("Take a 20-second break to look away from the screen!")
+    .setContentTitle("Eye Care Reminder 👁️")
+    .setContentText("Take a 20-second break...")
+```
+
+**Notification with sound:**
+```kotlin
+// File: EyeCareWorker.kt, Line ~78
+if (PreferencesHelper.isSoundEnabled(context)) {
+    val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    notificationBuilder.setSound(soundUri)
+}
+```
+
+---
+
+### Settings Persistence
+
+**Save setting:**
+```kotlin
+// File: PreferencesHelper.kt
+PreferencesHelper.setReminderInterval(context, minutes)
+PreferencesHelper.setSoundEnabled(context, enabled)
+PreferencesHelper.setPauseUntil(context, timeMillis)
+```
+
+**Load setting:**
+```kotlin
+// File: PreferencesHelper.kt
+val interval = PreferencesHelper.getReminderInterval(context)
+val soundEnabled = PreferencesHelper.isSoundEnabled(context)
+val isPaused = PreferencesHelper.isPaused(context)
 ```
 
 ---
@@ -160,32 +247,63 @@ First two digits = transparency (00=invisible, FF=opaque, 99=40% transparent)
 
 ---
 
-### Change Reminder Interval
+### Change Reminder Interval Range
 
 **File:** `MainActivity.kt`
-**Line:** 339
+**Line:** ~465 (in RemindersCard)
 ```kotlin
-20, TimeUnit.MINUTES  // Change 20 to any number
+valueRange = 15f..60f,  // Change min/max here
+steps = 8, // Adjust number of steps
 ```
 
 **Examples:**
-- `1, TimeUnit.MINUTES` - Every 1 minute (testing)
-- `15, TimeUnit.MINUTES` - Every 15 minutes
-- `30, TimeUnit.MINUTES` - Every 30 minutes
-- `1, TimeUnit.HOURS` - Every hour
+- `10f..30f` - Shorter intervals for intense work
+- `20f..90f` - Longer intervals for light work
+- `15f..45f` - Pomodoro-style timing
 
-⚠️ **Note:** WorkManager minimum is 15 minutes for production. Lower values work for testing.
+---
+
+### Change Default Reminder Interval
+
+**File:** `PreferencesHelper.kt`
+**Line:** 27
+```kotlin
+const val DEFAULT_REMINDER_INTERVAL = 20 // Change to any number
+```
+
+---
+
+### Change Pause Duration Options
+
+**File:** `MainActivity.kt`
+**Lines:** ~595-609 (in PauseDialog)
+```kotlin
+Button(onClick = { onPause(30) }) { Text("30 Minutes") }
+Button(onClick = { onPause(60) }) { Text("1 Hour") }
+Button(onClick = { onPause(120) }) { Text("2 Hours") }
+// Add more options as needed
+```
 
 ---
 
 ### Change Notification Text
 
 **File:** `EyeCareWorker.kt`
-**Lines:** 56-61
+**Lines:** ~60-65
 
 ```kotlin
-.setContentTitle("Eye Care Reminder 👀")  // Change title here
-.setContentText("Take a 20-second break...")  // Change message here
+.setContentTitle("Eye Care Reminder 👁️")  // Change title
+.setContentText("Take a 20-second break...")  // Change message
+```
+
+---
+
+### Disable Sound by Default
+
+**File:** `PreferencesHelper.kt`
+**Line:** 66
+```kotlin
+return getPrefs(context).getBoolean(KEY_SOUND_ENABLED, false) // Change true to false
 ```
 
 ---
@@ -241,13 +359,13 @@ Define new colors, then use in `Theme.kt`
 
 | Metric | Count |
 |--------|-------|
-| Total files | 21 |
-| Kotlin files | 6 |
+| Total files | 24 |
+| Kotlin files | 7 |
 | XML files | 5 |
 | Gradle files | 4 |
-| Documentation | 4 |
-| Lines of code | ~850 |
-| Features | 2 |
+| Documentation | 6 |
+| Lines of code | ~1,200 |
+| Features | 8 |
 | Permissions | 4 |
 
 ---
@@ -282,20 +400,37 @@ Define new colors, then use in `Theme.kt`
 
 ## 🔍 Where to Find Things
 
+### "Where is the countdown timer?"
+→ `MainActivity.kt` → `CountdownTimerCard()` composable (Line ~270)
+→ `PreferencesHelper.kt` → `getTimeRemainingMillis()` (Line ~84)
+
+### "Where is the interval slider?"
+→ `MainActivity.kt` → `RemindersCard()` → Slider component (Line ~465)
+
+### "Where is the pause dialog?"
+→ `MainActivity.kt` → `PauseDialog()` composable (Line ~594)
+
+### "Where are sound notifications configured?"
+→ `EyeCareWorker.kt` → `sendNotification()` (Line ~78)
+→ `PreferencesHelper.kt` → `isSoundEnabled()` (Line ~63)
+
 ### "Where is the UI defined?"
-→ `MainActivity.kt` → `EyeCareScreen()` composable (Line ~54)
+→ `MainActivity.kt` → `EyeCareScreen()` composable (Line ~70)
 
 ### "Where is the overlay created?"
 → `BlueLightService.kt` → `showOverlay()` function (Line ~86)
 
 ### "Where are notifications sent?"
-→ `EyeCareWorker.kt` → `sendNotification()` function (Line ~42)
+→ `EyeCareWorker.kt` → `sendNotification()` function (Line ~50)
 
 ### "Where are permissions checked?"
-→ `MainActivity.kt` → Lines 35-50 (`hasOverlayPermission`, `hasNotificationPermission`)
+→ `MainActivity.kt` → Lines 110-125 (`hasOverlayPermission`, `hasNotificationPermission`)
 
 ### "Where is WorkManager scheduled?"
-→ `MainActivity.kt` → `scheduleEyeCareReminders()` function (Line ~337)
+→ `MainActivity.kt` → `scheduleEyeCareReminders()` function (Line ~620)
+
+### "Where are settings stored?"
+→ `PreferencesHelper.kt` - All settings management
 
 ### "Where are colors defined?"
 → `ui/theme/Color.kt`

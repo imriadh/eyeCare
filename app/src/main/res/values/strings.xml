@@ -11,4 +11,13 @@
     <string name="inactive">Inactive</string>
     <string name="about_20_20_20">About 20-20-20 Rule</string>
     <string name="rule_description">Every 20 minutes, look at something 20 feet away for 20 seconds to reduce eye strain.</string>
+    
+    <!-- New Enhanced Features -->
+    <string name="countdown_timer">Next Break In</string>
+    <string name="reminder_interval">Reminder Interval</string>
+    <string name="sound_notification">Sound Notification</string>
+    <string name="pause_reminders">Pause Reminders</string>
+    <string name="break_instructions">How to Take a Proper Break</string>
+    <string name="paused_status">Reminders Paused</string>
+    <string name="currently_paused">Currently Paused</string>
 </resources>

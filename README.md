@@ -9,14 +9,30 @@ A complete Android app built with Kotlin and Jetpack Compose to help you protect
 - Filters harmful blue light to reduce eye strain
 - Runs as a foreground service to stay active
 - Can be toggled on/off easily
+- Persistent across app restarts
 
 ### 2. 20-20-20 Rule Reminders ⏰
-- Sends notifications every 20 minutes
+- Sends notifications every 20 minutes (customizable from 15-60 minutes)
+- **Live Countdown Timer** - See time remaining until next break
 - Reminds you to take a break following the 20-20-20 rule:
   - Every 20 minutes
   - Look at something 20 feet away
   - For 20 seconds
 - Uses WorkManager for reliable background scheduling
+- **Enhanced Notifications** with break instructions
+- **Sound Notifications** - Optional sound alerts (toggle on/off)
+
+### 3. Customization Options ⚙️
+- **Adjustable Interval** - Set reminder from 15 to 60 minutes via slider
+- **Sound Control** - Enable/disable notification sounds
+- **Pause/Snooze** - Temporarily pause reminders (30 min, 1 hour, 2 hours)
+- Settings persist across app restarts
+
+### 4. Break Instructions 🌿
+- Detailed guidance on how to take proper breaks
+- Step-by-step instructions displayed in notifications
+- Tips for eye health and posture
+- Educational content about eye strain prevention
 
 ## 🛠️ Technical Stack
 
@@ -132,9 +148,36 @@ The app requires two important permissions:
 2. Look for the **"⏰ 20-20-20 Rule Reminders"** card
 3. If on Android 13+, grant notification permission when prompted
 4. Toggle the switch to **ON**
-5. You'll receive a notification every 20 minutes
-6. The notification reminds you to look away for 20 seconds
-7. Toggle **OFF** to stop reminders
+5. **See the countdown timer** showing time until next break
+6. You'll receive a notification every 20 minutes (or your custom interval)
+7. The notification includes detailed break instructions
+8. Toggle **OFF** to stop reminders
+
+### Customize Your Experience
+
+**Adjust Reminder Interval:**
+1. Enable reminders first
+2. Use the slider to set interval (15-60 minutes)
+3. Changes apply immediately
+
+**Enable/Disable Sound:**
+1. Enable reminders first
+2. Toggle the "🔊 Sound Notification" switch
+3. Notifications will play sound when enabled
+
+**Pause Reminders Temporarily:**
+1. Enable reminders first
+2. Tap "⏸️ Pause Reminders" button
+3. Choose duration: 30 minutes, 1 hour, or 2 hours
+4. Reminders automatically resume after the pause period
+
+### Understanding the Countdown Timer
+
+- The large timer shows **time remaining until your next break**
+- Format: **MM:SS** (minutes:seconds)
+- Updates every second in real-time
+- Resets when you change the interval
+- Visible only when reminders are active and not paused
 
 ## 🐛 Troubleshooting
 
@@ -166,10 +209,14 @@ The app requires two important permissions:
 ## 📝 Code Overview
 
 ### MainActivity.kt
-- Main UI built with Jetpack Compose
+- Enhanced UI built with Jetpack Compose
+- **Live countdown timer** with real-time updates
+- **Interactive slider** for interval customization
+- **Pause/snooze dialog** with multiple duration options
 - Handles permission requests
 - Controls service and worker lifecycle
-- Contains two toggle switches for features
+- Manages app preferences and settings
+- Contains multiple composable cards for features
 
 ### BlueLightService.kt
 - Foreground Service that runs while the filter is active
@@ -179,18 +226,71 @@ The app requires two important permissions:
 
 ### EyeCareWorker.kt
 - WorkManager Worker for periodic notifications
-- Executes every 20 minutes
-- Sends notification with 20-20-20 rule reminder
+- Executes every N minutes (customizable 15-60 minutes)
+- **Checks pause status** before sending notifications
+- Sends **enhanced notifications** with break instructions
+- **Optional sound alerts** based on user preference
+- Updates last notification timestamp
 - Continues running even if app is closed
+
+### PreferencesHelper.kt
+- Centralized preferences management using SharedPreferences
+- Stores user settings (interval, sound, pause status, etc.)
+- Provides helper methods for all app settings
+- Calculates time remaining for countdown timer
+- Persists state across app restarts
 
 ## 🎯 Key Learning Points for Beginners
 
-1. **Jetpack Compose**: Modern declarative UI framework
-2. **Material 3**: Latest Material Design components
-3. **WorkManager**: Reliable background task scheduling
-4. **Foreground Services**: Long-running background operations with user awareness
-5. **Runtime Permissions**: Handling dangerous permissions properly
-6. **WindowManager**: Drawing overlays on top of other apps
+1. **Jetpack Compose** - Modern declarative UI framework with state management
+2. **Material 3** - Latest Material Design components (Cards, Sliders, Switches)
+3. **WorkManager** - Reliable background task scheduling with custom intervals
+4. **Foreground Services** - Long-running background operations with user awareness
+5. **Runtime Permissions** - Handling dangerous permissions properly
+6. **WindowManager** - Drawing overlays on top of other apps
+7. **SharedPreferences** - Persisting user settings and app state
+8. **LaunchedEffect** - Side effects in Compose for countdown timer
+9. **State Management** - Using `remember`, `mutableStateOf`, and `derivedStateOf`
+10. **Notifications** - Enhanced notifications with sound, actions, and big text style
+11. **UI/UX Design** - Creating intuitive, user-friendly mobile interfaces
+12. **App Lifecycle** - Managing state across configuration changes and app restarts
+
+## ✨ Enhanced Features (New!)
+
+### 🎯 Most Important Features (80/20 Rule Applied)
+
+Based on popular eye care apps and user feedback, we've implemented the features that provide maximum value:
+
+1. **⏱️ Live Countdown Timer** - Always know when your next break is coming
+2. **🎚️ Customizable Intervals** - Adjust from 15-60 minutes to fit your workflow
+3. **⏸️ Pause/Snooze** - Temporarily pause during meetings or focused work
+4. **🔊 Sound Notifications** - Never miss a reminder with optional sound alerts
+5. **📋 Break Instructions** - Learn proper techniques for eye care breaks
+6. **💾 Settings Persistence** - Your preferences are saved automatically
+
+### 🆚 Comparison with Chrome Extension Features
+
+| Feature | Our Android App | Chrome Extension |
+|---------|----------------|------------------|
+| 20-20-20 Reminders | ✅ | ✅ |
+| Countdown Timer | ✅ | ✅ |
+| Custom Intervals | ✅ (15-60 min) | ✅ |
+| Pause/Snooze | ✅ | ✅ |
+| Sound Notifications | ✅ | ✅ |
+| Break Instructions | ✅ | ✅ |
+| Blue Light Filter | ✅ | ❌ |
+| System Tray | ❌ (Android) | ✅ (Desktop) |
+| Settings Sync | ❌ | ✅ |
+| Works without browser | ✅ | ❌ |
+
+### 🎨 UI Improvements
+
+- **Modern Material 3 Design** - Contemporary, accessible interface
+- **Color-coded Cards** - Easy identification of features
+- **Real-time Updates** - Countdown timer updates every second
+- **Responsive Layout** - Works on all screen sizes
+- **Clear Visual Feedback** - Know the status of each feature at a glance
+- **Scrollable Interface** - All features accessible without clutter
 
 ## 🔄 Version Information
 
