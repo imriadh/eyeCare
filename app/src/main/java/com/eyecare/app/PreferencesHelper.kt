@@ -43,16 +43,19 @@ object PreferencesHelper {
     private const val KEY_LAST_EXERCISE_DATE = "last_exercise_date"
     private const val KEY_EXERCISE_HISTORY = "exercise_history"
     
-    // Smart Mode Keys
-    private const val KEY_SMART_MODE_ENABLED = "smart_mode_enabled"
+    // Smart Break Keys
+    private const val KEY_SMART_BREAKS_ENABLED = "smart_breaks_enabled"
     private const val KEY_WORK_HOURS_START = "work_hours_start"
     private const val KEY_WORK_HOURS_END = "work_hours_end"
     private const val KEY_QUIET_HOURS_START = "quiet_hours_start"
     private const val KEY_QUIET_HOURS_END = "quiet_hours_end"
-    private const val KEY_BREAK_SKIP_PATTERN = "break_skip_pattern"
     
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
+    const val DEFAULT_WORK_START = 8 // 8 AM
+    const val DEFAULT_WORK_END = 18 // 6 PM
+    const val DEFAULT_QUIET_START = 22 // 10 PM
+    const val DEFAULT_QUIET_END = 7 // 7 AM
     
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -378,115 +381,99 @@ object PreferencesHelper {
         return result
     }
     
-    // ============ Smart Mode Methods ============
+    // ============ Smart Break Methods ============
     
-    // Smart Mode Enabled
-    fun isSmartModeEnabled(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_SMART_MODE_ENABLED, false)
+    // Smart Breaks Enabled
+    fun isSmartBreaksEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_SMART_BREAKS_ENABLED, false)
     }
     
-    fun setSmartModeEnabled(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_SMART_MODE_ENABLED, enabled).apply()
+    fun setSmartBreaksEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_SMART_BREAKS_ENABLED, enabled).apply()
     }
     
-    // Work Hours (stored in minutes from midnight)
+    // Work Hours (24-hour format)
     fun getWorkHoursStart(context: Context): Int {
-        return getPrefs(context).getInt(KEY_WORK_HOURS_START, 8 * 60) // 8 AM
+        return getPrefs(context).getInt(KEY_WORK_HOURS_START, DEFAULT_WORK_START)
     }
     
-    fun setWorkHoursStart(context: Context, minutes: Int) {
-        getPrefs(context).edit().putInt(KEY_WORK_HOURS_START, minutes).apply()
+    fun setWorkHoursStart(context: Context, hour: Int) {
+        getPrefs(context).edit().putInt(KEY_WORK_HOURS_START, hour).apply()
     }
     
     fun getWorkHoursEnd(context: Context): Int {
-        return getPrefs(context).getInt(KEY_WORK_HOURS_END, 18 * 60) // 6 PM
+        return getPrefs(context).getInt(KEY_WORK_HOURS_END, DEFAULT_WORK_END)
     }
     
-    fun setWorkHoursEnd(context: Context, minutes: Int) {
-        getPrefs(context).edit().putInt(KEY_WORK_HOURS_END, minutes).apply()
+    fun setWorkHoursEnd(context: Context, hour: Int) {
+        getPrefs(context).edit().putInt(KEY_WORK_HOURS_END, hour).apply()
     }
     
-    // Quiet Hours (stored in minutes from midnight)
+    // Quiet Hours (24-hour format)
     fun getQuietHoursStart(context: Context): Int {
-        return getPrefs(context).getInt(KEY_QUIET_HOURS_START, 22 * 60) // 10 PM
+        return getPrefs(context).getInt(KEY_QUIET_HOURS_START, DEFAULT_QUIET_START)
     }
     
-    fun setQuietHoursStart(context: Context, minutes: Int) {
-        getPrefs(context).edit().putInt(KEY_QUIET_HOURS_START, minutes).apply()
+    fun setQuietHoursStart(context: Context, hour: Int) {
+        getPrefs(context).edit().putInt(KEY_QUIET_HOURS_START, hour).apply()
     }
     
     fun getQuietHoursEnd(context: Context): Int {
-        return getPrefs(context).getInt(KEY_QUIET_HOURS_END, 7 * 60) // 7 AM
+        return getPrefs(context).getInt(KEY_QUIET_HOURS_END, DEFAULT_QUIET_END)
     }
     
-    fun setQuietHoursEnd(context: Context, minutes: Int) {
-        getPrefs(context).edit().putInt(KEY_QUIET_HOURS_END, minutes).apply()
+    fun setQuietHoursEnd(context: Context, hour: Int) {
+        getPrefs(context).edit().putInt(KEY_QUIET_HOURS_END, hour).apply()
     }
     
-    // Check if current time is within work hours
-    fun isWithinWorkHours(context: Context): Boolean {
-        if (!isSmartModeEnabled(context)) return true
-        
+    // Check if current time is in quiet hours
+    fun isInQuietHours(context: Context): Boolean {
         val calendar = java.util.Calendar.getInstance()
-        val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + 
-                           calendar.get(java.util.Calendar.MINUTE)
+        val currentHour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
         
-        val start = getWorkHoursStart(context)
-        val end = getWorkHoursEnd(context)
+        val startHour = getQuietHoursStart(context)
+        val endHour = getQuietHoursEnd(context)
         
-        return currentMinutes in start until end
-    }
-    
-    // Check if current time is within quiet hours
-    fun isWithinQuietHours(context: Context): Boolean {
-        if (!isSmartModeEnabled(context)) return false
-        
-        val calendar = java.util.Calendar.getInstance()
-        val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + 
-                           calendar.get(java.util.Calendar.MINUTE)
-        
-        val start = getQuietHoursStart(context)
-        val end = getQuietHoursEnd(context)
-        
-        // Handle overnight quiet hours (e.g., 22:00 to 7:00)
-        return if (start > end) {
-            currentMinutes >= start || currentMinutes < end
+        return if (startHour < endHour) {
+            // Same day range (e.g., 8 AM - 6 PM)
+            currentHour in startHour until endHour
         } else {
-            currentMinutes in start until end
+            // Overnight range (e.g., 10 PM - 7 AM)
+            currentHour >= startHour || currentHour < endHour
         }
     }
     
-    // Record when breaks are skipped (for pattern learning)
-    fun recordBreakSkipped(context: Context) {
+    // Check if current time is in work hours
+    fun isInWorkHours(context: Context): Boolean {
         val calendar = java.util.Calendar.getInstance()
-        val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        val currentHour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
         
-        val pattern = getPrefs(context).getString(KEY_BREAK_SKIP_PATTERN, "") ?: ""
-        val newPattern = if (pattern.isEmpty()) "$hour" else "$pattern,$hour"
+        val startHour = getWorkHoursStart(context)
+        val endHour = getWorkHoursEnd(context)
         
-        // Keep only last 50 skip records
-        val skips = newPattern.split(",")
-        val trimmed = skips.takeLast(50).joinToString(",")
-        
-        getPrefs(context).edit().putString(KEY_BREAK_SKIP_PATTERN, trimmed).apply()
+        return if (startHour < endHour) {
+            currentHour in startHour until endHour
+        } else {
+            // Unlikely but handle overnight work hours
+            currentHour >= startHour || currentHour < endHour
+        }
     }
     
-    // Get hours when breaks are frequently skipped
-    fun getFrequentSkipHours(context: Context): Set<Int> {
-        val pattern = getPrefs(context).getString(KEY_BREAK_SKIP_PATTERN, "") ?: ""
-        if (pattern.isEmpty()) return emptySet()
+    // Check if reminders should be active (respects smart breaks settings)
+    fun shouldShowReminder(context: Context): Boolean {
+        if (!isSmartBreaksEnabled(context)) {
+            return true // Smart breaks disabled, always show
+        }
         
-        val hours = pattern.split(",").mapNotNull { it.toIntOrNull() }
-        val frequency = hours.groupingBy { it }.eachCount()
+        // Smart breaks enabled - check conditions
+        if (isInQuietHours(context)) {
+            return false // In quiet hours, don't show
+        }
         
-        // Return hours that are skipped more than 3 times
-        return frequency.filter { it.value > 3 }.keys
-    }
-    
-    // Convert minutes from midnight to HH:MM format
-    fun formatTimeFromMinutes(minutes: Int): String {
-        val hours = minutes / 60
-        val mins = minutes % 60
-        return String.format("%02d:%02d", hours, mins)
+        // Optionally check work hours (only show during work hours)
+        // For now, we'll allow reminders outside work hours
+        // but this can be made configurable
+        
+        return true
     }
 }

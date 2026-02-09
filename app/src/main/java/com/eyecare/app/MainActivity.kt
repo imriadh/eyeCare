@@ -18,6 +18,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -1405,6 +1406,301 @@ fun AchievementCard(
 }
 
 @Composable
+fun SmartBreaksSettings() {
+    val context = LocalContext.current
+    var smartBreaksEnabled by remember { mutableStateOf(PreferencesHelper.isSmartBreaksEnabled(context)) }
+    var showWorkHoursPicker by remember { mutableStateOf(false) }
+    var showQuietHoursPicker by remember { mutableStateOf(false) }
+    var isSelectingStart by remember { mutableStateOf(true) }
+    
+    val workStart = remember { mutableStateOf(PreferencesHelper.getWorkHoursStart(context)) }
+    val workEnd = remember { mutableStateOf(PreferencesHelper.getWorkHoursEnd(context)) }
+    val quietStart = remember { mutableStateOf(PreferencesHelper.getQuietHoursStart(context)) }
+    val quietEnd = remember { mutableStateOf(PreferencesHelper.getQuietHoursEnd(context)) }
+    
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Smart Breaks Toggle Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (smartBreaksEnabled) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Smart Break Mode",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (smartBreaksEnabled) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    Text(
+                        text = "Automatically pause during quiet hours",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (smartBreaksEnabled) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        }
+                    )
+                }
+                Switch(
+                    checked = smartBreaksEnabled,
+                    onCheckedChange = {
+                        smartBreaksEnabled = it
+                        PreferencesHelper.setSmartBreaksEnabled(context, it)
+                    }
+                )
+            }
+        }
+        
+        // Work Hours Card
+        if (smartBreaksEnabled) {
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showWorkHoursPicker = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "💼", fontSize = 20.sp)
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Work Hours",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${formatHour(workStart.value)} - ${formatHour(workEnd.value)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                }
+            }
+            
+            // Quiet Hours Card
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showQuietHoursPicker = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "🌙", fontSize = 20.sp)
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Quiet Hours",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${formatHour(quietStart.value)} - ${formatHour(quietEnd.value)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "No reminders during this time",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                }
+            }
+        }
+    }
+    
+    // Work Hours Picker Dialog
+    if (showWorkHoursPicker) {
+        HoursRangePickerDialog(
+            title = "Set Work Hours",
+            startHour = workStart.value,
+            endHour = workEnd.value,
+            onDismiss = { showWorkHoursPicker = false },
+            onConfirm = { start, end ->
+                workStart.value = start
+                workEnd.value = end
+                PreferencesHelper.setWorkHoursStart(context, start)
+                PreferencesHelper.setWorkHoursEnd(context, end)
+                showWorkHoursPicker = false
+            }
+        )
+    }
+    
+    // Quiet Hours Picker Dialog
+    if (showQuietHoursPicker) {
+        HoursRangePickerDialog(
+            title = "Set Quiet Hours",
+            startHour = quietStart.value,
+            endHour = quietEnd.value,
+            onDismiss = { showQuietHoursPicker = false },
+            onConfirm = { start, end ->
+                quietStart.value = start
+                quietEnd.value = end
+                PreferencesHelper.setQuietHoursStart(context, start)
+                PreferencesHelper.setQuietHoursEnd(context, end)
+                showQuietHoursPicker = false
+            }
+        )
+    }
+}
+
+@Composable
+fun HoursRangePickerDialog(
+    title: String,
+    startHour: Int,
+    endHour: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit
+) {
+    var selectedStart by remember { mutableStateOf(startHour) }
+    var selectedEnd by remember { mutableStateOf(endHour) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Start Hour
+                Column {
+                    Text(
+                        text = "From:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HourSelector(
+                        selectedHour = selectedStart,
+                        onHourSelected = { selectedStart = it }
+                    )
+                }
+                
+                // End Hour
+                Column {
+                    Text(
+                        text = "To:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HourSelector(
+                        selectedHour = selectedEnd,
+                        onHourSelected = { selectedEnd = it }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedStart, selectedEnd) }) {
+                Text("Set Hours")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun HourSelector(
+    selectedHour: Int,
+    onHourSelected: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        (0..23).forEach { hour ->
+            FilterChip(
+                selected = hour == selectedHour,
+                onClick = { onHourSelected(hour) },
+                label = {
+                    Text(
+                        text = formatHour(hour),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            )
+        }
+    }
+}
+
+fun formatHour(hour: Int): String {
+    val period = if (hour < 12) "AM" else "PM"
+    val displayHour = when (hour) {
+        0 -> 12
+        in 1..12 -> hour
+        else -> hour - 12
+    }
+    return "$displayHour:00 $period"
+}
+
+@Composable
 fun SettingsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     
@@ -1535,6 +1831,15 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 )
             }
         }
+        
+        // Smart Breaks Settings
+        Text(
+            text = "🧠 Smart Breaks",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        
+        SmartBreaksSettings()
         
         Text(
             text = "⚙️ Quick Actions",

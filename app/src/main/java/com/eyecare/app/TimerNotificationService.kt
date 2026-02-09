@@ -130,6 +130,16 @@ class TimerNotificationService : Service() {
         val context = applicationContext
         val timeRemaining = PreferencesHelper.getTimeRemainingMillis(context)
         
+        // Check quiet hours - if in quiet hours and smart breaks enabled, auto-pause        if (PreferencesHelper.isSmartBreaksEnabled(context) && 
+            PreferencesHelper.isInQuietHours(context) && 
+            !PreferencesHelper.isPaused(context)) {
+            // Auto-pause during quiet hours
+            val timeRemaining = PreferencesHelper.getTimeRemainingMillis(context)
+            PreferencesHelper.setPausedRemainingTime(context, timeRemaining)
+            val pauseUntil = System.currentTimeMillis() + (24 * 60 * 60 * 1000L)
+            PreferencesHelper.setPauseUntil(context, pauseUntil)
+        }
+        
         // Track break completion when timer reaches 0
         if (timeRemaining <= 1000 && !PreferencesHelper.isPaused(context)) {
             // Check if we haven't already recorded this break
