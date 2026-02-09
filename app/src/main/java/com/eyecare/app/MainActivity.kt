@@ -895,83 +895,75 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
 
 private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cycles: Int) {
     try {
-        val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as AlarmManager
-        
-        // Check if we can schedule exact alarms (Android 12+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
-                // Request permission to schedule exact alarms
-                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                return
-            }
+        // Primary method: Use AlarmClock intent to open alarm app with pre-filled data
+        // This is the most reliable method that works on all Android versions
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
+            putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
+            putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles - Eye Care")
+            putExtra(AlarmClock.EXTRA_SKIP_UI, false) // Show the alarm UI so user can confirm
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         
-        // Create intent for alarm receiver
-        val intent = Intent(context, AlarmReceiver::class.java).apply {
-            putExtra(AlarmReceiver.EXTRA_ALARM_MESSAGE, "$cycles Sleep Cycles - Time to wake up!")
-        }
-        
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        // Set the alarm
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                wakeUpTime.timeInMillis,
-                pendingIntent
-            )
+        // Check if there's an app that can handle this intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+            
+            // Show confirmation
+            android.widget.Toast.makeText(
+                context,
+                "⏰ Setting alarm for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))} ($cycles cycles)",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
         } else {
-            alarmManager.setExact(
-                AlarmManager.RTC_WAKEUP,
-                wakeUpTime.timeInMillis,
-                pendingIntent
-            )
-        }
-        
-        // Show confirmation toast
-        android.widget.Toast.makeText(
-            context,
-            "✅ Alarm set for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))}",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-        
-    } catch (e: Exception) {
-        e.printStackTrace()
-        // Fallback: try to open clock app
-        try {
-            val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-                putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
-                putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
-                putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles - Eye Care")
-                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+            // Fallback: Try to open default clock app
+            val clockIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
-            } else {
-                // Last resort: open clock app
-                val clockIntent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    setPackage("com.google.android.deskclock")
+            // Try common clock app package names
+            val clockPackages = listOf(
+                "com.google.android.deskclock",
+                "com.android.deskclock",
+                "com.samsung.android.app.clockpackage",
+                "com.sec.android.app.clockpackage"
+            )
+            
+            var opened = false
+            for (packageName in clockPackages) {
+                try {
+                    clockIntent.setPackage(packageName)
+                    if (clockIntent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(clockIntent)
+                        opened = true
+                        android.widget.Toast.makeText(
+                            context,
+                            "⏰ Opening clock app - Please set alarm for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))}",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                        break
+                    }
+                } catch (e: Exception) {
+                    continue
                 }
-                context.startActivity(clockIntent)
             }
-        } catch (e2: Exception) {
-            android.widget.Toast.makeText(
-                context,
-                "❌ Unable to set alarm",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            
+            if (!opened) {
+                android.widget.Toast.makeText(
+                    context,
+                    "❌ Unable to open clock app. Please set alarm manually for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        android.widget.Toast.makeText(
+            context,
+            "❌ Error setting alarm: ${e.message}",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 }
 

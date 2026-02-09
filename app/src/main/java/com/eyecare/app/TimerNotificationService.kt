@@ -167,6 +167,17 @@ class TimerNotificationService : Service() {
             closeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        
+        // Delete intent (when user swipes notification away)
+        val deleteIntent = Intent(context, TimerNotificationService::class.java).apply {
+            action = ACTION_STOP
+        }
+        val deletePendingIntent = PendingIntent.getService(
+            context,
+            4,
+            deleteIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val pauseResumeText = if (isPaused) "▶️ Resume" else "⏸️ Pause"
 
@@ -178,6 +189,7 @@ class TimerNotificationService : Service() {
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openAppPendingIntent)
+            .setDeleteIntent(deletePendingIntent)
             .addAction(
                 android.R.drawable.ic_media_pause,
                 pauseResumeText,
