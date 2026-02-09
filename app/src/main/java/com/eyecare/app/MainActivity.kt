@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
     
     private fun initializeReminders() {
         // Check if this is first launch and reminders are enabled by default
-        val prefs = getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("eye_care_prefs", android.content.Context.MODE_PRIVATE)
         val isFirstLaunch = !prefs.contains("reminders_enabled")
         
         if (isFirstLaunch && PreferencesHelper.areRemindersEnabled(this)) {
