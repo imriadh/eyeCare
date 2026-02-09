@@ -15,6 +15,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -138,6 +139,22 @@ fun getAllAchievements(): List<Achievement> {
             icon = "💪",
             requiredProgress = 50,
             getCurrentProgress = { context: Context -> PreferencesHelper.getTotalBreaks(context) }
+        ),
+        Achievement(
+            id = "exercise_starter",
+            title = "Exercise Starter",
+            description = "Complete 10 eye exercises",
+            icon = "👁️",
+            requiredProgress = 10,
+            getCurrentProgress = { context: Context -> PreferencesHelper.getTotalExercises(context) }
+        ),
+        Achievement(
+            id = "exercise_master",
+            title = "Exercise Master",
+            description = "Complete 50 eye exercises",
+            icon = "🎖️",
+            requiredProgress = 50,
+            getCurrentProgress = { context: Context -> PreferencesHelper.getTotalExercises(context) }
         )
     )
 }
@@ -417,6 +434,9 @@ fun EyeCareHomeScreen(
     var timeRemainingMillis by remember { mutableStateOf(0L) }
     var isPaused by remember { mutableStateOf(PreferencesHelper.isPaused(context)) }
     var showPauseDialog by remember { mutableStateOf(false) }
+    var showExerciseSelection by remember { mutableStateOf(false) }
+    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
+    var showExerciseCompletion by remember { mutableStateOf(false) }
     
     // Update countdown timer
     LaunchedEffect(remindersEnabled, isPaused) {
@@ -586,6 +606,54 @@ fun EyeCareHomeScreen(
                 isPaused = isPaused
             )
             
+            // Eye Exercises Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "👁️ Eye Exercises",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Text(
+                                text = "${PreferencesHelper.getExercisesToday(context)} exercises today",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                    
+                    Text(
+                        text = "Strengthen and relax your eyes with guided exercises",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    
+                    Button(
+                        onClick = { showExerciseSelection = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Start Exercise")
+                    }
+                }
+            }
+            
             // Break Instructions Card
             BreakInstructionsCard()
         }
@@ -601,6 +669,44 @@ fun EyeCareHomeScreen(
                 showPauseDialog = false
             }
         )
+    }
+    
+    // Exercise Selection Dialog
+    if (showExerciseSelection) {
+        ExerciseSelectionDialog(
+            onExerciseSelected = { exercise ->
+                selectedExercise = exercise
+                showExerciseSelection = false
+            },
+            onDismiss = { showExerciseSelection = false }
+        )
+    }
+    
+    // Exercise Execution
+    selectedExercise?.let { exercise ->
+        ExerciseExecutionScreen(
+            exercise = exercise,
+            onComplete = {
+                selectedExercise = null
+                showExerciseCompletion = true
+            },
+            onSkip = {
+                selectedExercise = null
+            }
+        )
+    }
+    
+    // Exercise Completion Dialog
+    if (showExerciseCompletion) {
+        selectedExercise?.let { exercise ->
+            ExerciseCompletionDialog(
+                exercise = exercise,
+                onDismiss = {
+                    showExerciseCompletion = false
+                    selectedExercise = null
+                }
+            )
+        }
     }
 }
 
@@ -972,6 +1078,90 @@ fun StatsScreen(paddingValues: PaddingValues) {
                     icon = "📊"
                 )
                 StatsRow(label = "Current Streak", value = "$currentStreak days", icon = "🔥")
+            }
+        }
+        
+        // Exercise Stats Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "👁️ Exercise Statistics",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                
+                val totalExercises = PreferencesHelper.getTotalExercises(context)
+                val exercisesToday = PreferencesHelper.getExercisesToday(context)
+                val exerciseHistory = PreferencesHelper.getExerciseHistory(context)
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Total Exercises",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = "$totalExercises",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Today",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = "$exercisesToday",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+                
+                if (exerciseHistory.isNotEmpty()) {
+                    Divider(color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.2f))
+                    Text(
+                        text = "Most Practiced:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    exerciseHistory.entries.sortedByDescending { it.value }.take(3).forEach { (type, count) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = type.capitalize(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Text(
+                                text = "$count times",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
             }
         }
         
@@ -1574,6 +1764,348 @@ fun TimePickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
+            }
+        }
+    )
+}
+
+// ========== EXERCISE UI SCREENS ==========
+
+@Composable
+fun ExerciseSelectionDialog(
+    onExerciseSelected: (Exercise) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "👁️ Choose an Exercise",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Rest your eyes with a guided exercise:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                getAllExercises().forEach { exercise ->
+                    ExerciseSelectionCard(
+                        exercise = exercise,
+                        onClick = { onExerciseSelected(exercise) }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Skip for Now")
+            }
+        }
+    )
+}
+
+@Composable
+fun ExerciseSelectionCard(
+    exercise: Exercise,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = exercise.icon,
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = exercise.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = exercise.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                )
+                Text(
+                    text = "${exercise.durationSeconds}s",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Icon(
+                Icons.Default.ArrowForward,
+                contentDescription = "Start",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun ExerciseExecutionScreen(
+    exercise: Exercise,
+    onComplete: () -> Unit,
+    onSkip: () -> Unit
+) {
+    var currentStep by remember { mutableStateOf(0) }
+    var timeRemaining by remember { mutableStateOf(exercise.durationSeconds) }
+    var isPaused by remember { mutableStateOf(false) }
+    
+    // Timer countdown
+    LaunchedEffect(isPaused) {
+        if (!isPaused) {
+            while (timeRemaining > 0) {
+                delay(1000)
+                timeRemaining--
+            }
+            if (timeRemaining == 0) {
+                onComplete()
+            }
+        }
+    }
+    
+    // Animation for follow the dot
+    var dotOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset(0f, 0f)) }
+    
+    if (exercise.type == ExerciseType.FOLLOW_DOT) {
+        LaunchedEffect(timeRemaining) {
+            while (timeRemaining > 0 && !isPaused) {
+                val random = java.util.Random()
+                dotOffset = androidx.compose.ui.geometry.Offset(
+                    random.nextFloat() * 200f - 100f,
+                    random.nextFloat() * 200f - 100f
+                )
+                delay(2000) // Move every 2 seconds
+            }
+        }
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Header
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = exercise.icon,
+                style = MaterialTheme.typography.displayLarge
+            )
+            Text(
+                text = exercise.title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "⏱️ $timeRemaining seconds",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        
+        // Instructions/Animation Area
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(vertical = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                when (exercise.type) {
+                    ExerciseType.FOLLOW_DOT -> {
+                        Box(
+                            modifier = Modifier
+                                .size(300.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surface,
+                                    shape = MaterialTheme.shapes.medium
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(dotOffset.x.dp, dotOffset.y.dp)
+                                    .size(40.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Follow the moving dot with your eyes",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    else -> {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            exercise.instructions.forEachIndexed { index, instruction ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Surface(
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                        color = if (index <= currentStep) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = "${index + 1}",
+                                                color = if (index <= currentStep) {
+                                                    MaterialTheme.colorScheme.onPrimary
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = instruction,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        modifier = Modifier.weight(1f),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Controls
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (exercise.type != ExerciseType.FOLLOW_DOT && currentStep < exercise.instructions.size - 1) {
+                Button(
+                    onClick = { currentStep++ },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Next Step")
+                }
+            }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onSkip,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Skip")
+                }
+                Button(
+                    onClick = { isPaused = !isPaused },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (isPaused) "Resume" else "Pause")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExerciseCompletionDialog(
+    exercise: Exercise,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    LaunchedEffect(Unit) {
+        PreferencesHelper.recordExerciseCompleted(context, exercise.id)
+        checkAndNotifyAchievements(context)
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Text(text = "🎉", style = MaterialTheme.typography.displayLarge)
+        },
+        title = {
+            Text(
+                text = "Exercise Complete!",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Great job! You completed the ${exercise.title}.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Your eyes feel refreshed! 👁️💚",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Done")
             }
         }
     )
