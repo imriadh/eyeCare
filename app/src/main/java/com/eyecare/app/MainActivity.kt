@@ -256,6 +256,12 @@ fun EyeCareHomeScreen(
                 onPause = {
                     showPauseDialog = true
                 },
+                onReset = {
+                    PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                    PreferencesHelper.setPauseUntil(context, 0)
+                    isPaused = false
+                    timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+                },
                 onRequestPermission = onRequestNotificationPermission,
                 isPaused = isPaused
             )
@@ -485,7 +491,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             .padding(paddingValues)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // App Info Card
         Card(
@@ -495,32 +501,42 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             )
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "👁️",
-                    fontSize = 64.sp
+                    fontSize = 72.sp
                 )
                 Text(
                     text = "Eye Care App",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Version 2.0",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Version 4.0",
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                )
                 Text(
-                    text = "Protect your eyes and sleep better!",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Protect your eyes with the 20-20-20 rule",
+                    style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
+        
+        Text(
+            text = "📚 About",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
         
         // Info About 20-20-20 Rule
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -528,14 +544,46 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = "⏰", fontSize = 24.sp)
+                    Text(
+                        text = "The 20-20-20 Rule",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Text(
-                    text = "ℹ️ About the 20-20-20 Rule",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "Every 20 minutes, take a 20-second break to look at something 20 feet away. This simple rule helps reduce eye strain, prevent headaches, and maintain healthy vision during screen time.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 22.sp
                 )
+            }
+        }
+        
+        // Why It Matters
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = "💡", fontSize = 24.sp)
+                    Text(
+                        text = "Why It Matters",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Text(
-                    text = "Every 20 minutes, take a 20-second break to look at something 20 feet away. This simple rule helps reduce eye strain, prevent headaches, and maintain healthy vision.",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Digital eye strain affects up to 90% of screen users. Regular breaks help prevent dry eyes, blurred vision, and headaches while improving focus and productivity.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 22.sp
                 )
             }
         }
@@ -546,70 +594,28 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "😴 About Sleep Cycles",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "A complete sleep cycle lasts about 90 minutes. During this time, you go through different stages of sleep including REM (dream sleep). Waking up at the end of a cycle helps you feel more refreshed than waking up in the middle of one.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-        
-        // Blue Light Filter Info
-        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "🔶 About Blue Light Filter",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Blue light from screens can cause eye strain and disrupt sleep patterns. The orange overlay filter reduces blue light exposure, especially useful in the evening hours.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-        
-        // Features List
-        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "✨ App Features",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                listOf(
-                    "👁️ Blue light filter overlay",
-                    "⏰ 20-20-20 reminder notifications",
-                    "⏱️ Customizable reminder intervals",
-                    "⏸️ Pause/snooze functionality",
-                    "🔊 Sound notification controls",
-                    "😴 Sleep cycle calculator",
-                    "⏰ Smart alarm suggestions",
-                    "🎨 Material 3 design"
-                ).forEach { feature ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = "😴", fontSize = 24.sp)
                     Text(
-                        text = feature,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        text = "Sleep Cycles",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
+                Text(
+                    text = "A complete sleep cycle lasts about 90 minutes. Waking up at the end of a cycle helps you feel more refreshed than waking in the middle of one. Use our Sleep tab to find your optimal wake-up times!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 22.sp
+                )
             }
         }
         
-        // Quick Actions
         Text(
-            text = "⚡ Quick Actions",
-            style = MaterialTheme.typography.titleMedium,
+            text = "⚙️ Quick Actions",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
         
@@ -626,25 +632,115 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "App Permissions",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Manage app permissions",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "App Permissions",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Manage notifications & settings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Icon(Icons.Default.ArrowForward, contentDescription = null)
             }
         }
+        
+        // Copyright Section
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Developed by",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Riad Hossain",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                OutlinedCard(
+                    modifier = Modifier
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://riad.iam.bd"))
+                            context.startActivity(intent)
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "riad.iam.bd",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                Text(
+                    text = "© 2026 All Rights Reserved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Text(
+                    text = "Made with ❤️ for eye health",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -722,17 +818,30 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
 }
 
 private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cycles: Int) {
-    val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as AlarmManager
-    
-    // Create intent for alarm
-    val intent = Intent(AlarmClock.ACTION_SET_ALARM)
-    intent.putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
-    intent.putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
-    intent.putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles")
-    intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-    
-    if (intent.resolveActivity(context.packageManager) != null) {
-        context.startActivity(intent)
+    try {
+        // Create intent for alarm
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
+            putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
+            putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles - Eye Care")
+            putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        } else {
+            // Fallback: try to open clock app
+            val clockIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                setPackage("com.google.android.deskclock")
+            }
+            context.startActivity(clockIntent)
+        }
+    } catch (e: Exception) {
+        // Silent fail - alarm app not available
+        e.printStackTrace()
     }
 }
 
@@ -740,6 +849,9 @@ private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cyc
 fun CountdownTimerCard(timeRemainingMillis: Long) {
     val minutes = (timeRemainingMillis / 1000 / 60).toInt()
     val seconds = ((timeRemainingMillis / 1000) % 60).toInt()
+    val totalSeconds = (timeRemainingMillis / 1000).toFloat()
+    val intervalSeconds = PreferencesHelper.DEFAULT_REMINDER_INTERVAL * 60f
+    val progress = 1f - (totalSeconds / intervalSeconds)
     
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -750,26 +862,52 @@ fun CountdownTimerCard(timeRemainingMillis: Long) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "⏰ Next Break In",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Text(
-                text = String.format("%02d:%02d", minutes, seconds),
-                style = MaterialTheme.typography.displayLarge,
+                text = "🍅 Pomodoro Timer",
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 56.sp
-            )
-            Text(
-                text = "minutes : seconds",
-                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            
+            // Circular progress indicator
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(200.dp)
+            ) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxSize(),
+                    strokeWidth = 12.dp,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = String.format("%02d:%02d", minutes, seconds),
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 48.sp
+                    )
+                    Text(
+                        text = "until break",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            
+            Text(
+                text = "Focus on your work, we'll remind you!",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -819,6 +957,7 @@ fun RemindersCard(
     onIntervalChange: (Float) -> Unit,
     onSoundToggle: (Boolean) -> Unit,
     onPause: () -> Unit,
+    onReset: () -> Unit,
     onRequestPermission: () -> Unit,
     isPaused: Boolean
 ) {
@@ -1031,25 +1170,40 @@ fun RemindersCard(
                     }
                 }
                 
-                // Pause Button with better styling
-                FilledTonalButton(
-                    onClick = onPause,
+                // Pause and Reset Buttons
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isPaused,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (!isPaused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isPaused) "Currently Paused" else "Pause Reminders",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    FilledTonalButton(
+                        onClick = onPause,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isPaused,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (!isPaused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isPaused) "Paused" else "Pause",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    
+                    OutlinedButton(
+                        onClick = onReset,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "🔄 Reset",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }

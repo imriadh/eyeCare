@@ -1,47 +1,75 @@
 # 👁️ Eye Care App
 
-A complete Android app built with Kotlin and Jetpack Compose to help you protect your eyes while using your device.
+A modern Android app built with Kotlin and Jetpack Compose to help you protect your eyes with the 20-20-20 rule.
+
+## 🌟 Version 4.0 - What's New!
+
+### ✨ Persistent Notification with Live Timer
+- **Real-time countdown** displayed in notification bar
+- **Always visible** - See your next break timer without opening the app
+- **Updates every second** for accurate timing
+- **Works when app is closed** or in background
+
+### 🎮 Interactive Notification Controls
+- **Pause/Resume Button** - Toggle reminders directly from notification
+- **Reset Button** - Restart countdown when you take a manual break
+- **Quick Actions** - No need to open the app!
+
+### 🎨 Completely Redesigned UI
+- Modern card design with dynamic elevation
+- Gradient surfaces and icon badges
+- Smooth transitions and better spacing
+- Polished typography and color theming
+
+### 👁️ Brand New Logo
+- Custom eye icon with professional design
+- Beautiful purple gradient background
+- Adaptive icon for all Android launchers
 
 ## 📱 Features
 
-### 1. Blue Light Filter 🔶
-- Creates a semi-transparent orange overlay over your entire screen
-- Filters harmful blue light to reduce eye strain
-- Runs as a foreground service to stay active
-- Can be toggled on/off easily
-- Persistent across app restarts
-
-### 2. 20-20-20 Rule Reminders ⏰
-- Sends notifications every 20 minutes (customizable from 15-60 minutes)
-- **Live Countdown Timer** - See time remaining until next break
-- Reminds you to take a break following the 20-20-20 rule:
+### 1. 20-20-20 Rule Reminders ⏰
+- **Persistent notification** shows countdown timer throughout your phone
+- **Customizable intervals** from 15 to 60 minutes
+- **Live countdown** updates every second in notification
+- **Pause/Resume/Reset controls** in notification
+- Reminds you to take breaks following the 20-20-20 rule:
   - Every 20 minutes
   - Look at something 20 feet away
   - For 20 seconds
 - Uses WorkManager for reliable background scheduling
-- **Enhanced Notifications** with break instructions
 - **Sound Notifications** - Optional sound alerts (toggle on/off)
 
-### 3. Customization Options ⚙️
+### 2. Sleep Cycle Calculator 😴
+- Calculate optimal wake-up times based on 90-minute sleep cycles
+- 5 different wake-up time options
+- Custom bedtime selection
+- Direct alarm integration - opens clock app to set alarm
+- Helps you wake up refreshed
+
+### 3. Settings & Information ⚙️
+- Educational content about eye health
+- 20-20-20 rule explained
+- Why taking breaks matters
+- Proper break instructions
+- App information and version details
+
+### 4. Customization Options 🎛️
 - **Adjustable Interval** - Set reminder from 15 to 60 minutes via slider
 - **Sound Control** - Enable/disable notification sounds
-- **Pause/Snooze** - Temporarily pause reminders (30 min, 1 hour, 2 hours)
+- **Pause Options** - Temporarily pause reminders (30 min, 1 hour, 2 hours)
+- **Bottom Navigation** - Clean 3-tab interface (Home, Sleep, Settings)
 - Settings persist across app restarts
-
-### 4. Break Instructions 🌿
-- Detailed guidance on how to take proper breaks
-- Step-by-step instructions displayed in notifications
-- Tips for eye health and posture
-- Educational content about eye strain prevention
 
 ## 🛠️ Technical Stack
 
-- **Language**: Kotlin
+- **Language**: Kotlin 1.9.22
 - **UI Framework**: Jetpack Compose with Material 3
 - **Background Work**: WorkManager for periodic notifications
-- **Service**: Foreground Service for blue light filter overlay
+- **Foreground Service**: Persistent notification with live timer
 - **Min SDK**: 26 (Android 8.0)
 - **Target SDK**: 34 (Android 14)
+- **APK Size**: 8.8 MB
 
 ## 📂 Project Structure
 
@@ -49,19 +77,25 @@ A complete Android app built with Kotlin and Jetpack Compose to help you protect
 app/
 ├── src/main/
 │   ├── java/com/eyecare/app/
-│   │   ├── MainActivity.kt              # Main UI with Compose
-│   │   ├── BlueLightService.kt          # Foreground service for overlay
-│   │   ├── EyeCareWorker.kt             # WorkManager worker for notifications
-│   │   └── ui/theme/                    # Theme files (Color, Type, Theme)
+│   │   ├── MainActivity.kt                    # Main UI with Compose (3-tab navigation)
+│   │   ├── TimerNotificationService.kt        # Persistent notification service
+│   │   ├── EyeCareWorker.kt                   # WorkManager for scheduled reminders
+│   │   ├── PreferencesHelper.kt               # Settings management
+│   │   └── ui/theme/                          # Theme files (Color, Type, Theme)
 │   ├── res/
+│   │   ├── drawable/
+│   │   │   ├── ic_launcher_foreground.xml     # Custom eye icon
+│   │   │   └── ic_launcher_background.xml     # Gradient background
+│   │   ├── mipmap-anydpi-v26/                 # Adaptive icons
 │   │   ├── values/
-│   │   │   ├── strings.xml              # String resources
-│   │   │   └── themes.xml               # App themes
+│   │   │   ├── strings.xml                    # String resources
+│   │   │   ├── colors.xml                     # Color palette
+│   │   │   └── themes.xml                     # App themes
 │   │   └── xml/
-│   │       ├── backup_rules.xml         # Backup configuration
+│   │       ├── backup_rules.xml               # Backup configuration
 │   │       └── data_extraction_rules.xml
-│   └── AndroidManifest.xml              # App configuration & permissions
-├── build.gradle.kts                     # App-level Gradle config
+│   └── AndroidManifest.xml                    # App configuration & permissions
+├── build.gradle.kts                           # App-level Gradle config
 └── proguard-rules.pro
 ```
 
@@ -118,205 +152,159 @@ app/
 
 ## 🔐 Permissions
 
-The app requires two important permissions:
+The app requires the following permissions:
 
-### 1. Display Over Other Apps (SYSTEM_ALERT_WINDOW)
-- **Required for**: Blue Light Filter overlay
-- **What happens**: When you toggle the Blue Light Filter, the app will show a button to grant this permission
-- **Action**: Tap the button → You'll be taken to Settings → Enable "Display over other apps"
+### 1. **POST_NOTIFICATIONS** (Android 13+)
+- **Why**: To send eye care reminder notifications
+- **When**: You'll be prompted when you first enable reminders
+- **Required**: Yes - without it, you won't receive break reminders
 
-### 2. Notifications (POST_NOTIFICATIONS)
-- **Required for**: 20-20-20 Rule Reminders
-- **What happens**: When you toggle Reminders on Android 13+, the app will request this permission
-- **Action**: Tap "Allow" on the permission dialog
+### 2. **FOREGROUND_SERVICE**
+- **Why**: To show persistent notification with live countdown timer
+- **When**: Granted automatically by the system
+- **Required**: Yes - for notification to stay visible when app is closed
+
+### 3. **SCHEDULE_EXACT_ALARM**
+- **Why**: To send reminders at precise intervals
+- **When**: Granted automatically by the system
+- **Required**: Yes - for accurate reminder timing
 
 ## 📖 How to Use the App
-
-### Enable Blue Light Filter
-
-1. Open the Eye Care app
-2. Look for the **"🔶 Blue Light Filter"** card
-3. If prompted, grant the **"Display over other apps"** permission
-4. Toggle the switch to **ON**
-5. You'll see an orange tint over your entire screen
-6. A persistent notification shows "Blue Light Filter Active"
-7. Toggle **OFF** to remove the filter
 
 ### Enable 20-20-20 Reminders
 
 1. Open the Eye Care app
-2. Look for the **"⏰ 20-20-20 Rule Reminders"** card
+2. Look for the **"⏰ 20-20-20 Rule"** card on the Home tab
 3. If on Android 13+, grant notification permission when prompted
 4. Toggle the switch to **ON**
-5. **See the countdown timer** showing time until next break
-6. You'll receive a notification every 20 minutes (or your custom interval)
-7. The notification includes detailed break instructions
-8. Toggle **OFF** to stop reminders
+5. **Persistent notification appears** with live countdown timer
+6. **Timer updates every second** showing time until next break
+7. You'll receive reminder notifications at your set interval
+8. **Use notification buttons** to control reminders:
+   - **⏸️ Pause** - Temporarily pause reminders
+   - **▶️ Resume** - Continue reminders
+   - **🔄 Reset** - Restart countdown timer
 
 ### Customize Your Experience
 
 **Adjust Reminder Interval:**
 1. Enable reminders first
 2. Use the slider to set interval (15-60 minutes)
-3. Changes apply immediately
+3. The interval badge shows current setting
+4. Changes apply immediately
 
 **Enable/Disable Sound:**
 1. Enable reminders first
-2. Toggle the "🔊 Sound Notification" switch
+2. Toggle the "🔊 Sound Alerts" switch
 3. Notifications will play sound when enabled
 
 **Pause Reminders Temporarily:**
 1. Enable reminders first
-2. Tap "⏸️ Pause Reminders" button
-3. Choose duration: 30 minutes, 1 hour, or 2 hours
-4. Reminders automatically resume after the pause period
+2. Tap "Pause Reminders" button in app, OR
+3. Tap "⏸️ Pause" button in the notification
+4. Choose duration: 30 minutes, 1 hour, or 2 hours
+5. Reminders automatically resume after the pause period
 
-### Understanding the Countdown Timer
+### Use Sleep Cycle Calculator
 
-- The large timer shows **time remaining until your next break**
-- Format: **MM:SS** (minutes:seconds)
-- Updates every second in real-time
-- Resets when you change the interval
-- Visible only when reminders are active and not paused
+1. Switch to the **"Sleep"** tab in bottom navigation
+2. Choose "Sleep Now" or "Custom Time"
+3. If custom, select your bedtime
+4. View 5 optimal wake-up time options (based on 90-min cycles)
+5. Tap "Set Alarm" to open your clock app
+6. Confirm the alarm time
+
+### View Settings & Information
+
+1. Switch to the **"Settings"** tab
+2. Read about why eye breaks matter
+3. Learn the 20-20-20 rule
+4. View app information
 
 ## 🐛 Troubleshooting
 
-### Build Errors
+### Notification Not Showing
 
-**Problem**: "Gradle sync failed"
-- **Solution**: 
-  - Go to File → Invalidate Caches → Check "Clear file system cache and Local History" → Invalidate and Restart
-  - Or delete the `.gradle` folder and sync again
+**Problem**: Persistent notification doesn't appear
+- **Solution 1**: Make sure you granted notification permission
+- **Solution 2**: Check that reminders are enabled in the app
+- **Solution 3**: Go to Android Settings → Apps → Eye Care → Notifications → Enable all categories
 
-**Problem**: "SDK location not found"
-- **Solution**:
-  - Go to File → Project Structure → SDK Location
-  - Set Android SDK location (usually: `/Users/YourName/Library/Android/sdk` on Mac or `C:\Users\YourName\AppData\Local\Android\Sdk` on Windows)
+### Timer Not Updating
 
-### Runtime Issues
+**Problem**: Countdown timer is frozen
+- **Solution**: Disable and re-enable reminders to restart the service
 
-**Problem**: Blue Light Filter doesn't show
-- **Solution**: Make sure you granted "Display over other apps" permission in Settings
+### App Stops Working
 
-**Problem**: Notifications don't appear
-- **Solution**: 
-  - Check notification permission is granted
-  - Go to Settings → Apps → Eye Care → Notifications → Ensure "All Eye Care notifications" is ON
+**Problem**: Reminders stop after phone restarts
+- **Solution**: Open the app once after restart to reschedule reminders
 
-**Problem**: Reminders stop after device reboot
-- **Solution**: This is expected behavior. Open the app and toggle reminders ON again after restart
+## 🎨 Screenshots
 
-## 📝 Code Overview
+(Screenshots will be added here)
 
-### MainActivity.kt
-- Enhanced UI built with Jetpack Compose
-- **Live countdown timer** with real-time updates
-- **Interactive slider** for interval customization
-- **Pause/snooze dialog** with multiple duration options
-- Handles permission requests
-- Controls service and worker lifecycle
-- Manages app preferences and settings
-- Contains multiple composable cards for features
+## 💡 Why Eye Care Matters
 
-### BlueLightService.kt
-- Foreground Service that runs while the filter is active
-- Creates a full-screen semi-transparent overlay using `WindowManager`
-- Shows a persistent notification
-- Automatically stops when toggled off
+### The Problem
+- **Digital Eye Strain**: Prolonged screen time causes fatigue, dryness, and discomfort
+- **Computer Vision Syndrome**: Affects 50-90% of computer users
+- **Sleep Disruption**: Blue light before bed can affect sleep quality
 
-### EyeCareWorker.kt
-- WorkManager Worker for periodic notifications
-- Executes every N minutes (customizable 15-60 minutes)
-- **Checks pause status** before sending notifications
-- Sends **enhanced notifications** with break instructions
-- **Optional sound alerts** based on user preference
-- Updates last notification timestamp
-- Continues running even if app is closed
+### The Solution - 20-20-20 Rule
+- **Every 20 minutes**: Take a break
+- **Look 20 feet away**: Focus on distant objects
+- **For 20 seconds**: Give your eyes time to relax
 
-### PreferencesHelper.kt
-- Centralized preferences management using SharedPreferences
-- Stores user settings (interval, sound, pause status, etc.)
-- Provides helper methods for all app settings
-- Calculates time remaining for countdown timer
-- Persists state across app restarts
+### Benefits
+- ✅ Reduces eye strain and fatigue
+- ✅ Prevents dry eyes
+- ✅ Improves focus and productivity
+- ✅ Better long-term eye health
 
-## 🎯 Key Learning Points for Beginners
+## 🔮 Version History
 
-1. **Jetpack Compose** - Modern declarative UI framework with state management
-2. **Material 3** - Latest Material Design components (Cards, Sliders, Switches)
-3. **WorkManager** - Reliable background task scheduling with custom intervals
-4. **Foreground Services** - Long-running background operations with user awareness
-5. **Runtime Permissions** - Handling dangerous permissions properly
-6. **WindowManager** - Drawing overlays on top of other apps
-7. **SharedPreferences** - Persisting user settings and app state
-8. **LaunchedEffect** - Side effects in Compose for countdown timer
-9. **State Management** - Using `remember`, `mutableStateOf`, and `derivedStateOf`
-10. **Notifications** - Enhanced notifications with sound, actions, and big text style
-11. **UI/UX Design** - Creating intuitive, user-friendly mobile interfaces
-12. **App Lifecycle** - Managing state across configuration changes and app restarts
+### v4.0 (Current) - February 9, 2025
+- ✨ Persistent notification with live countdown timer
+- 🎮 Notification action buttons (Pause/Resume/Reset)
+- 🎨 Completely redesigned UI
+- 👁️ New custom eye care logo
+- 🗑️ Removed blue light filter (phones have built-in)
 
-## ✨ Enhanced Features (New!)
+### v3.0
+- Bottom navigation with 3 tabs
+- Sleep cycle calculator
+- Settings screen
+- Fixed blue light filter permission
 
-### 🎯 Most Important Features (80/20 Rule Applied)
+### v2.0
+- Blue light filter with overlay
+- Enhanced notifications
 
-Based on popular eye care apps and user feedback, we've implemented the features that provide maximum value:
+### v1.0
+- Initial release
+- Basic 20-20-20 reminders
 
-1. **⏱️ Live Countdown Timer** - Always know when your next break is coming
-2. **🎚️ Customizable Intervals** - Adjust from 15-60 minutes to fit your workflow
-3. **⏸️ Pause/Snooze** - Temporarily pause during meetings or focused work
-4. **🔊 Sound Notifications** - Never miss a reminder with optional sound alerts
-5. **📋 Break Instructions** - Learn proper techniques for eye care breaks
-6. **💾 Settings Persistence** - Your preferences are saved automatically
+## 🙏 Credits
 
-### 🆚 Comparison with Chrome Extension Features
-
-| Feature | Our Android App | Chrome Extension |
-|---------|----------------|------------------|
-| 20-20-20 Reminders | ✅ | ✅ |
-| Countdown Timer | ✅ | ✅ |
-| Custom Intervals | ✅ (15-60 min) | ✅ |
-| Pause/Snooze | ✅ | ✅ |
-| Sound Notifications | ✅ | ✅ |
-| Break Instructions | ✅ | ✅ |
-| Blue Light Filter | ✅ | ❌ |
-| System Tray | ❌ (Android) | ✅ (Desktop) |
-| Settings Sync | ❌ | ✅ |
-| Works without browser | ✅ | ❌ |
-
-### 🎨 UI Improvements
-
-- **Modern Material 3 Design** - Contemporary, accessible interface
-- **Color-coded Cards** - Easy identification of features
-- **Real-time Updates** - Countdown timer updates every second
-- **Responsive Layout** - Works on all screen sizes
-- **Clear Visual Feedback** - Know the status of each feature at a glance
-- **Scrollable Interface** - All features accessible without clutter
-
-## 🔄 Version Information
-
-- **Kotlin**: 1.9.22
-- **Gradle**: 8.2
-- **Android Gradle Plugin**: 8.2.2
-- **Compose BOM**: 2024.02.00
-- **WorkManager**: 2.9.0
-- **Compile SDK**: 34
-- **Min SDK**: 26
+Built with ❤️ using:
+- **Kotlin** - Modern programming language
+- **Jetpack Compose** - Declarative UI framework
+- **Material 3** - Latest Material Design
 
 ## 📄 License
 
-This project is for educational purposes.
+This project is open source and available under the MIT License.
 
 ## 🤝 Contributing
 
-This is a learning project. Feel free to fork and experiment!
-
-## 📧 Support
-
-If you encounter any issues:
-1. Check the Troubleshooting section above
-2. Make sure all Gradle dependencies downloaded successfully
-3. Verify your Android Studio is up to date
+Contributions are welcome! Feel free to:
+- Report bugs
+- Suggest new features
+- Submit pull requests
 
 ---
 
-**Built with ❤️ for eye health and Android learning**
+**Made with care for your eyes** 👁️✨
+
+*Last updated: February 9, 2025 - Version 4.0*
