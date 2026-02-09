@@ -508,7 +508,7 @@ fun SleepCycleCard(cycles: Int, wakeUpTime: Calendar, onSetAlarm: () -> Unit) {
             }
             
             FilledTonalButton(onClick = onSetAlarm) {
-                Icon(Icons.Default.AlarmAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.AddAlarm, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Set Alarm")
             }
@@ -683,7 +683,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Icon(Icons.Default.NavigateNext, contentDescription = null)
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
             }
         }
     }
