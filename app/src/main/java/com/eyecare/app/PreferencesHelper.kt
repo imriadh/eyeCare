@@ -17,7 +17,6 @@ object PreferencesHelper {
     private const val KEY_PAUSE_UNTIL = "pause_until"
     private const val KEY_SOUND_ENABLED = "sound_enabled"
     private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
-    private const val KEY_BLUE_LIGHT_ENABLED = "blue_light_enabled"
     
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
@@ -74,15 +73,6 @@ object PreferencesHelper {
     
     fun setRemindersEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_REMINDERS_ENABLED, enabled).apply()
-    }
-    
-    // Blue Light Filter Enabled
-    fun isBlueLightFilterEnabled(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_BLUE_LIGHT_ENABLED, false)
-    }
-    
-    fun setBlueLightFilterEnabled(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_BLUE_LIGHT_ENABLED, enabled).apply()
     }
     
     // Calculate time remaining until next break

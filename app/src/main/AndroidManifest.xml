@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
-    <!-- Permission to show overlay (Blue Light Filter) -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     
     <!-- Permission to post notifications (20-20-20 reminders) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -37,15 +34,15 @@
             </intent-filter>
         </activity>
         
-        <!-- Blue Light Filter Service -->
+        <!-- Timer Notification Service -->
         <service
-            android:name=".BlueLightService"
+            android:name=".TimerNotificationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Eye care blue light filter overlay" />
+                android:value="Eye care countdown timer notification" />
         </service>
         
         <!-- WorkManager Worker -->

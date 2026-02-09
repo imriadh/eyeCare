@@ -42,14 +42,15 @@ import android.provider.AlarmClock
  * MainActivity - Enhanced Eye Care App
  * 
  * Features:
- * - Blue Light Filter with toggle
- * - 20-20-20 Rule Reminders with countdown timer
+ * - 20-20-20 Rule Reminders with persistent countdown timer
+ * - Real-time notification with timer and control buttons
+ * - Pause/Resume/Reset actions from notification
  * - Sleep Cycle Calculator with alarm feature
  * - Customizable reminder interval (15-60 minutes)
  * - Pause/Snooze functionality (30 min, 1 hour, 2 hours)
  * - Sound notification toggle
  * - Break instructions
- * - Settings screen
+ * - Settings screen with educational content
  * - Bottom navigation for clean UI
  * - Permission handling
  */
@@ -162,9 +163,6 @@ fun EyeCareHomeScreen(
     val context = LocalContext.current
     
     // State variables
-    var blueLightFilterEnabled by remember { 
-        mutableStateOf(PreferencesHelper.isBlueLightFilterEnabled(context)) 
-    }
     var remindersEnabled by remember { 
         mutableStateOf(PreferencesHelper.areRemindersEnabled(context)) 
     }
@@ -188,10 +186,6 @@ fun EyeCareHomeScreen(
     }
     
     // Permission states - check again when permissionCheckTrigger changes
-    val hasOverlayPermission = remember(permissionCheckTrigger) {
-        Settings.canDrawOverlays(context)
-    }
-    
     val hasNotificationPermission = remember(permissionCheckTrigger) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
@@ -222,37 +216,6 @@ fun EyeCareHomeScreen(
                 PausedStatusCard()
             }
             
-            // Blue Light Filter Card
-            BlueLightFilterCard(
-                enabled = blueLightFilterEnabled,
-                hasPermission = hasOverlayPermission,
-                onToggle = { isChecked ->
-                    if (isChecked && !hasOverlayPermission) {
-                        return@BlueLightFilterCard
-                    }
-                    blueLightFilterEnabled = isChecked
-                    PreferencesHelper.setBlueLightFilterEnabled(context, isChecked)
-                    
-                    if (isChecked) {
-                        val intent = Intent(context, BlueLightService::class.java)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            context.startForegroundService(intent)
-                        } else {
-                            context.startService(intent)
-                        }
-                    } else {
-                        context.stopService(Intent(context, BlueLightService::class.java))
-                    }
-                },
-                onRequestPermission = {
-                    val intent = Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:${context.packageName}")
-                    )
-                    context.startActivity(intent)
-                }
-            )
-            
             // Reminders Card
             RemindersCard(
                 enabled = remindersEnabled,
@@ -269,9 +232,13 @@ fun EyeCareHomeScreen(
                     if (isChecked) {
                         PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
                         scheduleEyeCareReminders(context, reminderInterval.roundToInt())
+                        // Start persistent notification service
+                        TimerNotificationService.startService(context)
                     } else {
                         cancelEyeCareReminders(context)
                         PreferencesHelper.setLastNotificationTime(context, 0)
+                        // Stop persistent notification service
+                        TimerNotificationService.stopService(context)
                     }
                 },
                 onIntervalChange = { newInterval ->
@@ -843,83 +810,6 @@ fun PausedStatusCard() {
 }
 
 @Composable
-fun BlueLightFilterCard(
-    enabled: Boolean,
-    hasPermission: Boolean,
-    onToggle: (Boolean) -> Unit,
-    onRequestPermission: () -> Unit
-) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "🔶 Blue Light Filter",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Text(
-                text = "Reduces harmful blue light with an orange overlay",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            if (!hasPermission) {
-                OutlinedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.outlinedCardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "⚠️ Permission Required",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "App needs permission to display over other apps",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Button(
-                            onClick = onRequestPermission,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Grant Permission")
-                        }
-                    }
-                }
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (enabled) "✓ Active" else "Inactive",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (enabled) FontWeight.Bold else FontWeight.Normal,
-                    color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-                
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = onToggle,
-                    enabled = hasPermission
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun RemindersCard(
     enabled: Boolean,
     hasPermission: Boolean,
@@ -932,22 +822,239 @@ fun RemindersCard(
     onRequestPermission: () -> Unit,
     isPaused: Boolean
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 8.dp else 2.dp)
+    ) {
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "⏰ 20-20-20 Rule Reminders",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            // Header with icon and title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "⏰",
+                            fontSize = 28.sp
+                        )
+                    }
+                }
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "20-20-20 Rule",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (enabled) "Protecting your eyes ✓" else "Start eye care reminders",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggle,
+                    enabled = hasPermission
+                )
+            }
             
-            Text(
-                text = "Get reminded to take breaks and protect your eyes",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (!hasPermission) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "⚠️",
+                                fontSize = 20.sp
+                            )
+                            Text(
+                                text = "Notification Permission Required",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Text(
+                            text = "Allow notifications to receive eye care reminders",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        FilledTonalButton(
+                            onClick = onRequestPermission,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Grant Permission")
+                        }
+                    }
+                }
+            }
+            
+            if (enabled) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                
+                // Interval Slider with better styling
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Reminder Interval",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Text(
+                                    text = "$interval min",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                        
+                        Slider(
+                            value = interval.toFloat(),
+                            onValueChange = onIntervalChange,
+                            valueRange = 15f..60f,
+                            steps = 8,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "15 min",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "60 min",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                
+                // Sound Toggle with better styling
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(text = "🔊", fontSize = 20.sp)
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "Sound Alerts",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (soundEnabled) "Enabled" else "Disabled",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = soundEnabled,
+                            onCheckedChange = onSoundToggle
+                        )
+                    }
+                }
+                
+                // Pause Button with better styling
+                FilledTonalButton(
+                    onClick = onPause,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isPaused,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (!isPaused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isPaused) "Currently Paused" else "Pause Reminders",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
             
             if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 OutlinedCard(
