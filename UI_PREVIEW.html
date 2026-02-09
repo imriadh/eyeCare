@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye Care App - UI Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .phone-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #000;
+            border-radius: 40px;
+            padding: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .phone-screen {
+            background: #f5f5f5;
+            border-radius: 30px;
+            overflow: hidden;
+            height: 800px;
+            position: relative;
+        }
+        
+        .status-bar {
+            background: #E1BEE7;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #4A148C;
+        }
+        
+        .top-bar {
+            background: #E1BEE7;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .top-bar h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #4A148C;
+        }
+        
+        .content {
+            padding: 16px;
+            overflow-y: auto;
+            height: 680px;
+            background: #f5f5f5;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card.elevated {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .card.primary {
+            background: #E1BEE7;
+        }
+        
+        .card.secondary {
+            background: #B2DFDB;
+        }
+        
+        .card.error {
+            background: #FFCDD2;
+            border: 2px solid #EF5350;
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .card-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .countdown-timer {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .countdown-timer .label {
+            font-size: 16px;
+            color: #4A148C;
+            margin-bottom: 8px;
+        }
+        
+        .countdown-timer .time {
+            font-size: 56px;
+            font-weight: 700;
+            color: #6200EA;
+            letter-spacing: 4px;
+        }
+        
+        .countdown-timer .sublabel {
+            font-size: 12px;
+            color: #4A148C;
+            margin-top: 4px;
+        }
+        
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+        
+        .toggle-label {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .toggle-label.active {
+            color: #6200EA;
+        }
+        
+        .switch {
+            position: relative;
+            width: 52px;
+            height: 32px;
+            background: #ccc;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .switch.active {
+            background: #6200EA;
+        }
+        
+        .switch-thumb {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: left 0.3s;
+        }
+        
+        .switch.active .switch-thumb {
+            left: 24px;
+        }
+        
+        .slider-container {
+            margin: 16px 0;
+            padding-top: 8px;
+        }
+        
+        .slider-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            background: #E1BEE7;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .slider-track {
+            height: 6px;
+            background: #6200EA;
+            border-radius: 3px;
+            width: 25%;
+        }
+        
+        .slider-thumb {
+            position: absolute;
+            top: -5px;
+            left: 25%;
+            width: 16px;
+            height: 16px;
+            background: #6200EA;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #999;
+        }
+        
+        .divider {
+            height: 1px;
+            background: #E0E0E0;
+            margin: 16px 0;
+        }
+        
+        .button {
+            background: #6200EA;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+        }
+        
+        .button:hover {
+            background: #5200D0;
+        }
+        
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .instruction-list {
+            list-style: none;
+        }
+        
+        .instruction-list li {
+            padding: 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .warning-box {
+            background: #FFF3E0;
+            border-left: 4px solid #FF9800;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-title {
+            font-weight: 600;
+            color: #E65100;
+            margin-bottom: 4px;
+        }
+        
+        .warning-text {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .paused-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+        }
+        
+        .paused-icon {
+            font-size: 32px;
+        }
+        
+        .paused-text h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        
+        .paused-text p {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .info-note {
+            background: #E3F2FD;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+        
+        .preview-note {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            max-width: 400px;
+            margin: 0 auto 20px;
+        }
+        
+        .preview-note h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .preview-note p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .interactive-demo {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-note">
+        <h2>👁️ Eye Care App</h2>
+        <p>Interactive UI Preview - This is how your app looks!</p>
+    </div>
+
+    <div class="phone-container">
+        <div class="phone-screen">
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <span>9:41</span>
+                <span>📶 🔋</span>
+            </div>
+            
+            <!-- Top App Bar -->
+            <div class="top-bar">
+                <h1>👁️ Eye Care</h1>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Countdown Timer Card -->
+                <div class="card elevated primary">
+                    <div class="countdown-timer">
+                        <div class="label">⏰ Next Break In</div>
+                        <div class="time" id="countdown">14:37</div>
+                        <div class="sublabel">minutes : seconds</div>
+                    </div>
+                </div>
+                
+                <!-- Blue Light Filter Card -->
+                <div class="card elevated">
+                    <div class="card-title">🔶 Blue Light Filter</div>
+                    <div class="card-subtitle">Reduces harmful blue light with an orange overlay</div>
+                    
+                    <div class="toggle-row">
+                        <span class="toggle-label">Inactive</span>
+                        <div class="switch" id="filterSwitch" onclick="toggleSwitch('filterSwitch', 'filterLabel')">
+                            <div class="switch-thumb"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Reminders Card -->
+                <div class="card elevated">
+                    <div class="card-title">⏰ 20-20-20 Rule Reminders</div>
+                    <div class="card-subtitle">Get reminded to take breaks and protect your eyes</div>
+                    
+                    <div class="toggle-row">
+                        <span class="toggle-label active" id="reminderLabel">✓ Active</span>
+                        <div class="switch active" id="reminderSwitch" onclick="toggleSwitch('reminderSwitch', 'reminderLabel')">
+                            <div class="switch-thumb"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="divider"></div>
+                    
+                    <!-- Interval Slider -->
+                    <div class="slider-container">
+                        <div class="slider-header">Reminder Interval: <span id="intervalValue">20</span> minutes</div>
+                        <div class="slider" onclick="updateSlider(event)">
+                            <div class="slider-track" id="sliderTrack"></div>
+                            <div class="slider-thumb" id="sliderThumb"></div>
+                        </div>
+                        <div class="slider-labels">
+                            <span>15 min</span>
+                            <span>60 min</span>
+                        </div>
+                    </div>
+                    
+                    <div class="divider"></div>
+                    
+                    <!-- Sound Toggle -->
+                    <div class="toggle-row">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 4px;">🔊 Sound Notification</div>
+                            <div style="font-size: 13px; color: #666;">Play sound with notifications</div>
+                        </div>
+                        <div class="switch active" id="soundSwitch" onclick="toggleSwitch('soundSwitch')">
+                            <div class="switch-thumb"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="divider"></div>
+                    
+                    <!-- Pause Button -->
+                    <button class="button" id="pauseBtn" onclick="showPauseOptions()">⏸️ Pause Reminders</button>
+                </div>
+                
+                <!-- Break Instructions Card -->
+                <div class="card secondary">
+                    <div class="card-title">🌿 How to Take a Proper Break</div>
+                    <ul class="instruction-list">
+                        <li>1️⃣ Look at something 20 feet (6 meters) away</li>
+                        <li>2️⃣ Keep looking for at least 20 seconds</li>
+                        <li>3️⃣ Blink frequently to refresh your eyes</li>
+                        <li>4️⃣ Stretch your neck and shoulders</li>
+                        <li>5️⃣ Stand up and move around if possible</li>
+                    </ul>
+                </div>
+                
+                <!-- Info Card -->
+                <div class="card primary">
+                    <div class="card-title">ℹ️ About the 20-20-20 Rule</div>
+                    <div style="font-size: 13px; line-height: 1.6; margin-top: 8px;">
+                        Every 20 minutes, take a 20-second break to look at something 20 feet away. 
+                        This simple rule helps reduce eye strain, prevent headaches, and maintain healthy vision.
+                    </div>
+                    <div class="info-note">
+                        💡 Regular breaks also help prevent neck pain, back problems, and repetitive strain injuries (RSI).
+                    </div>
+                </div>
+
+                <div class="interactive-demo">
+                    ⚡ Interactive Demo - Click switches and slider above!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Countdown Timer Animation
+        let minutes = 14;
+        let seconds = 37;
+        
+        setInterval(() => {
+            seconds--;
+            if (seconds < 0) {
+                seconds = 59;
+                minutes--;
+                if (minutes < 0) {
+                    minutes = 19;
+                    seconds = 59;
+                }
+            }
+            document.getElementById('countdown').textContent = 
+                String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        }, 1000);
+
+        // Toggle Switch Function
+        function toggleSwitch(switchId, labelId) {
+            const switchEl = document.getElementById(switchId);
+            switchEl.classList.toggle('active');
+            
+            if (labelId) {
+                const label = document.getElementById(labelId);
+                if (switchEl.classList.contains('active')) {
+                    label.textContent = '✓ Active';
+                    label.classList.add('active');
+                } else {
+                    label.textContent = 'Inactive';
+                    label.classList.remove('active');
+                }
+            }
+        }
+
+        // Slider Function
+        function updateSlider(event) {
+            const slider = event.currentTarget;
+            const rect = slider.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+            
+            // Map to 15-60 range
+            const value = Math.round(15 + (percentage / 100) * 45);
+            
+            document.getElementById('sliderTrack').style.width = percentage + '%';
+            document.getElementById('sliderThumb').style.left = percentage + '%';
+            document.getElementById('intervalValue').textContent = value;
+        }
+
+        // Pause Button
+        function showPauseOptions() {
+            const options = ['30 Minutes', '1 Hour', '2 Hours'];
+            const choice = prompt('Pause reminders for:\n1. 30 Minutes\n2. 1 Hour\n3. 2 Hours\n\nEnter 1, 2, or 3:');
+            
+            if (choice) {
+                alert('Reminders paused for ' + options[parseInt(choice) - 1] + '! ⏸️');
+            }
+        }
+    </script>
+</body>
+</html>
