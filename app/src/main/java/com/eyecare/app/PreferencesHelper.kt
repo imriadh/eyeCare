@@ -37,6 +37,12 @@ object PreferencesHelper {
     private const val KEY_STATS_VIEWED = "stats_viewed"
     private const val KEY_ACHIEVEMENTS_UNLOCKED = "achievements_unlocked"
     
+    // Exercise Keys
+    private const val KEY_TOTAL_EXERCISES = "total_exercises"
+    private const val KEY_EXERCISES_TODAY = "exercises_today"
+    private const val KEY_LAST_EXERCISE_DATE = "last_exercise_date"
+    private const val KEY_EXERCISE_HISTORY = "exercise_history"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     
@@ -299,5 +305,68 @@ object PreferencesHelper {
     
     fun isAchievementUnlocked(context: Context, achievementId: String): Boolean {
         return getUnlockedAchievements(context).contains(achievementId)
+    }
+    
+    // ============ Exercise Methods ============
+    
+    // Total Exercises
+    fun getTotalExercises(context: Context): Int {
+        return getPrefs(context).getInt(KEY_TOTAL_EXERCISES, 0)
+    }
+    
+    // Exercises Today
+    fun getExercisesToday(context: Context): Int {
+        checkAndResetDaily(context)
+        return getPrefs(context).getInt(KEY_EXERCISES_TODAY, 0)
+    }
+    
+    // Record completed exercise
+    fun recordExerciseCompleted(context: Context, exerciseType: String = "") {
+        checkAndResetDaily(context)
+        
+        val prefs = getPrefs(context)
+        val editor = prefs.edit()
+        
+        // Increment counters
+        val totalExercises = prefs.getInt(KEY_TOTAL_EXERCISES, 0) + 1
+        val exercisesToday = prefs.getInt(KEY_EXERCISES_TODAY, 0) + 1
+        
+        editor.putInt(KEY_TOTAL_EXERCISES, totalExercises)
+        editor.putInt(KEY_EXERCISES_TODAY, exercisesToday)
+        editor.putString(KEY_LAST_EXERCISE_DATE, getTodayString())
+        
+        // Update exercise history (JSON: {"blink": 5, "focus": 3, ...})
+        if (exerciseType.isNotEmpty()) {
+            val historyJson = prefs.getString(KEY_EXERCISE_HISTORY, "{}") ?: "{}"
+            try {
+                val jsonObject = JSONObject(historyJson)
+                val currentCount = jsonObject.optInt(exerciseType, 0)
+                jsonObject.put(exerciseType, currentCount + 1)
+                editor.putString(KEY_EXERCISE_HISTORY, jsonObject.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        
+        editor.apply()
+    }
+    
+    // Get exercise history
+    fun getExerciseHistory(context: Context): Map<String, Int> {
+        val json = getPrefs(context).getString(KEY_EXERCISE_HISTORY, "{}") ?: "{}"
+        val result = mutableMapOf<String, Int>()
+        
+        try {
+            val jsonObject = JSONObject(json)
+            val keys = jsonObject.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                result[key] = jsonObject.getInt(key)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        return result
     }
 }

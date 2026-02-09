@@ -3,6 +3,7 @@ package com.eyecare.app
 import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -80,7 +81,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Take your first break",
             icon = "🌟",
             requiredProgress = 1,
-            getCurrentProgress = { context -> PreferencesHelper.getTotalBreaks(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getTotalBreaks(context) }
         ),
         Achievement(
             id = "week_warrior",
@@ -88,7 +89,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Maintain a 7 day streak",
             icon = "🔥",
             requiredProgress = 7,
-            getCurrentProgress = { context -> PreferencesHelper.getCurrentStreak(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getCurrentStreak(context) }
         ),
         Achievement(
             id = "century_club",
@@ -96,7 +97,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Complete 100 total breaks",
             icon = "💯",
             requiredProgress = 100,
-            getCurrentProgress = { context -> PreferencesHelper.getTotalBreaks(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getTotalBreaks(context) }
         ),
         Achievement(
             id = "night_owl",
@@ -104,7 +105,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Use sleep calculator 10 times",
             icon = "🌙",
             requiredProgress = 10,
-            getCurrentProgress = { context -> PreferencesHelper.getSleepCalcUsed(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getSleepCalcUsed(context) }
         ),
         Achievement(
             id = "data_lover",
@@ -112,7 +113,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Check stats 5 times",
             icon = "📊",
             requiredProgress = 5,
-            getCurrentProgress = { context -> PreferencesHelper.getStatsViewed(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getStatsViewed(context) }
         ),
         Achievement(
             id = "perfect_day",
@@ -120,7 +121,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Take 12+ breaks in one day",
             icon = "⚡",
             requiredProgress = 12,
-            getCurrentProgress = { context -> PreferencesHelper.getBreaksToday(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getBreaksToday(context) }
         ),
         Achievement(
             id = "month_master",
@@ -128,7 +129,7 @@ fun getAllAchievements(): List<Achievement> {
             description = "Maintain a 30 day streak",
             icon = "🏅",
             requiredProgress = 30,
-            getCurrentProgress = { context -> PreferencesHelper.getCurrentStreak(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getCurrentStreak(context) }
         ),
         Achievement(
             id = "dedicated",
@@ -136,9 +137,132 @@ fun getAllAchievements(): List<Achievement> {
             description = "Complete 50 total breaks",
             icon = "💪",
             requiredProgress = 50,
-            getCurrentProgress = { context -> PreferencesHelper.getTotalBreaks(context) }
+            getCurrentProgress = { context: Context -> PreferencesHelper.getTotalBreaks(context) }
         )
     )
+}
+
+/**
+ * Exercise Data Classes
+ */
+enum class ExerciseType {
+    BLINK, FOCUS_SHIFT, EYE_ROTATION, PALMING, FOLLOW_DOT
+}
+
+data class Exercise(
+    val id: String,
+    val type: ExerciseType,
+    val title: String,
+    val description: String,
+    val icon: String,
+    val durationSeconds: Int,
+    val instructions: List<String>
+)
+
+/**
+ * Get all available exercises
+ */
+fun getAllExercises(): List<Exercise> {
+    return listOf(
+        Exercise(
+            id = "blink",
+            type = ExerciseType.BLINK,
+            title = "Blink Exercise",
+            description = "Refresh and lubricate your eyes",
+            icon = "👁️",
+            durationSeconds = 20,
+            instructions = listOf(
+                "Blink rapidly for 10 times",
+                "Close your eyes gently",
+                "Relax for 10 seconds",
+                "Repeat 2 more times"
+            )
+        ),
+        Exercise(
+            id = "focus_shift",
+            type = ExerciseType.FOCUS_SHIFT,
+            title = "Focus Shift",
+            description = "Train your focus muscles",
+            icon = "🎯",
+            durationSeconds = 30,
+            instructions = listOf(
+                "Hold finger 10 inches from face",
+                "Focus on finger for 5 seconds",
+                "Look at distant object (20+ feet)",
+                "Focus on distance for 5 seconds",
+                "Repeat 3 times"
+            )
+        ),
+        Exercise(
+            id = "eye_rotation",
+            type = ExerciseType.EYE_ROTATION,
+            title = "Eye Rotation",
+            description = "Relax eye muscles",
+            icon = "🔄",
+            durationSeconds = 25,
+            instructions = listOf(
+                "Look up slowly, then right",
+                "Then down, then left",
+                "Complete a full circle",
+                "Repeat 3 times clockwise",
+                "Then 3 times counter-clockwise"
+            )
+        ),
+        Exercise(
+            id = "palming",
+            type = ExerciseType.PALMING,
+            title = "Palming",
+            description = "Rest and relax your eyes",
+            icon = "🙌",
+            durationSeconds = 30,
+            instructions = listOf(
+                "Rub hands together to warm them",
+                "Cup hands over closed eyes",
+                "Don't press on eyeballs",
+                "Relax in darkness for 30 seconds",
+                "Breathe deeply and calmly"
+            )
+        ),
+        Exercise(
+            id = "follow_dot",
+            type = ExerciseType.FOLLOW_DOT,
+            title = "Follow the Dot",
+            description = "Track moving objects smoothly",
+            icon = "⚫",
+            durationSeconds = 20,
+            instructions = listOf(
+                "Watch the dot move on screen",
+                "Follow smoothly with eyes only",
+                "Keep head still",
+                "Track for 20 seconds"
+            )
+        )
+    )
+}
+
+/**
+ * Check for newly unlocked achievements and show notification
+ */
+fun checkAndNotifyAchievements(context: Context) {
+    val achievements = getAllAchievements()
+    val unlockedAchievements = PreferencesHelper.getUnlockedAchievements(context)
+    
+    achievements.forEach { achievement ->
+        val currentProgress = achievement.getCurrentProgress(context)
+        val isAlreadyUnlocked = unlockedAchievements.contains(achievement.id)
+        
+        // If achievement is newly unlocked
+        if (!isAlreadyUnlocked && currentProgress >= achievement.requiredProgress) {
+            PreferencesHelper.unlockAchievement(context, achievement.id)
+            
+            // Show toast notification
+            android.widget.Toast.makeText(
+                context,
+                "${achievement.icon} Achievement Unlocked: ${achievement.title}!",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -681,6 +805,11 @@ fun SleepCycleCard(cycles: Int, wakeUpTime: Calendar, onSetAlarm: () -> Unit) {
 fun StatsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     
+    // Track stats view for achievements
+    LaunchedEffect(Unit) {
+        PreferencesHelper.incrementStatsViewed(context)
+    }
+    
     // Get statistics
     val breaksToday = remember { PreferencesHelper.getBreaksToday(context) }
     val totalBreaks = remember { PreferencesHelper.getTotalBreaks(context) }
@@ -1001,6 +1130,87 @@ fun StatsRow(label: String, value: String, icon: String) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
+    }
+}
+
+@Composable
+fun AchievementCard(
+    achievement: Achievement,
+    currentProgress: Int,
+    isUnlocked: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isUnlocked) {
+                MaterialTheme.colorScheme.tertiaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = if (isUnlocked) achievement.icon else "🔒",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = achievement.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isUnlocked) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        }
+                    )
+                    Text(
+                        text = achievement.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isUnlocked) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        }
+                    )
+                    
+                    if (!isUnlocked) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LinearProgressIndicator(
+                            progress = (currentProgress.toFloat() / achievement.requiredProgress).coerceIn(0f, 1f),
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "$currentProgress / ${achievement.requiredProgress}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+            
+            if (isUnlocked) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 
@@ -1377,6 +1587,9 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
 
 private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cycles: Int) {
     try {
+        // Track sleep calculator usage for achievements
+        PreferencesHelper.incrementSleepCalcUsed(context)
+        
         // Primary method: Use AlarmClock intent to open alarm app with pre-filled data
         // This is the most reliable method that works on all Android versions
         val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {

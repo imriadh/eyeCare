@@ -141,6 +141,10 @@ class TimerNotificationService : Service() {
             // This prevents duplicate recordings
             if (currentTime - lastBreakTime > 30000) {
                 PreferencesHelper.recordBreakCompleted(context)
+                
+                // Check for newly unlocked achievements
+                checkAndNotifyAchievements(context)
+                
                 context.getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
                     .edit()
                     .putLong("last_break_recorded_time", currentTime)
