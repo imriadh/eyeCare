@@ -20,4 +20,9 @@
     <string name="break_instructions">How to Take a Proper Break</string>
     <string name="paused_status">Reminders Paused</string>
     <string name="currently_paused">Currently Paused</string>
+    
+    <!-- Widget Descriptions -->
+    <string name="widget_small_description">Eye Care Timer - Small widget showing countdown timer</string>
+    <string name="widget_medium_description">Eye Care Timer - Medium widget showing timer and next break time</string>
+    <string name="widget_large_description">Eye Care Timer - Large widget showing timer, stats, and controls</string>
 </resources>

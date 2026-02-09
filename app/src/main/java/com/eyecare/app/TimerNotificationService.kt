@@ -165,6 +165,9 @@ class TimerNotificationService : Service() {
         val notification = createTimerNotification(context)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
+        
+        // Update all widgets with current timer state
+        EyeCareWidgetProvider.updateAllWidgets(context)
     }
 
     private fun createTimerNotification(context: Context): Notification {

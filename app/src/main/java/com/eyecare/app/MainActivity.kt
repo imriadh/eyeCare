@@ -503,12 +503,16 @@ fun EyeCareHomeScreen(
                             // Restart notification service
                             TimerNotificationService.stopService(context)
                             TimerNotificationService.startService(context)
+                            // Update widgets
+                            EyeCareWidgetProvider.updateAllWidgets(context)
                         } else {
                             // Pause - save current remaining time
                             PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
                             val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L)
                             PreferencesHelper.setPauseUntil(context, pauseUntil)
                             isPaused = true
+                            // Update widgets
+                            EyeCareWidgetProvider.updateAllWidgets(context)
                         }
                     }
                 },
@@ -523,6 +527,8 @@ fun EyeCareHomeScreen(
                         // Restart notification service
                         TimerNotificationService.stopService(context)
                         TimerNotificationService.startService(context)
+                        // Update widgets
+                        EyeCareWidgetProvider.updateAllWidgets(context)
                     }
                 },
                 onClose = {
@@ -535,6 +541,8 @@ fun EyeCareHomeScreen(
                     PreferencesHelper.setPausedRemainingTime(context, 0)
                     isPaused = false
                     TimerNotificationService.stopService(context)
+                    // Update widgets
+                    EyeCareWidgetProvider.updateAllWidgets(context)
                 }
             )
             
@@ -559,6 +567,8 @@ fun EyeCareHomeScreen(
                         // Restart notification service
                         TimerNotificationService.stopService(context)
                         TimerNotificationService.startService(context)
+                        // Update widgets
+                        EyeCareWidgetProvider.updateAllWidgets(context)
                     }
                 )
             }
@@ -587,6 +597,8 @@ fun EyeCareHomeScreen(
                         // Stop persistent notification service
                         TimerNotificationService.stopService(context)
                     }
+                    // Update widgets
+                    EyeCareWidgetProvider.updateAllWidgets(context)
                 },
                 onIntervalChange = { newInterval ->
                     reminderInterval = newInterval
@@ -594,6 +606,8 @@ fun EyeCareHomeScreen(
                     if (remindersEnabled) {
                         scheduleEyeCareReminders(context, newInterval.roundToInt())
                         PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        // Update widgets to show new timer
+                        EyeCareWidgetProvider.updateAllWidgets(context)
                     }
                 },
                 onSoundToggle = { isChecked ->

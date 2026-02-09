@@ -64,6 +64,49 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup" />
         </provider>
+        
+        <!-- Home Screen Widgets -->
+        <!-- Small Widget (2x2) -->
+        <receiver
+            android:name=".SmallWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.eyecare.app.ACTION_TOGGLE_PAUSE" />
+                <action android:name="com.eyecare.app.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_small_info" />
+        </receiver>
+        
+        <!-- Medium Widget (4x2) -->
+        <receiver
+            android:name=".MediumWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.eyecare.app.ACTION_TOGGLE_PAUSE" />
+                <action android:name="com.eyecare.app.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_medium_info" />
+        </receiver>
+        
+        <!-- Large Widget (4x4) -->
+        <receiver
+            android:name=".LargeWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.eyecare.app.ACTION_TOGGLE_PAUSE" />
+                <action android:name="com.eyecare.app.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_large_info" />
+        </receiver>
 
     </application>
 
