@@ -10,8 +10,8 @@ echo ""
 
 # Install OpenJDK 17
 echo "📦 Installing OpenJDK 17..."
-sudo apt-get update -qq
-sudo apt-get install -y openjdk-17-jdk wget unzip
+sudo apt-get update -qq 2>&1 | grep -v "GPG error" | grep -v "not signed" || true
+sudo apt-get install -y openjdk-17-jdk wget unzip 2>&1 | grep -v "GPG error" || true
 
 # Set JAVA_HOME
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64

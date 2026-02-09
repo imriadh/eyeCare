@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground>
+        <inset android:inset="20%">
+            <vector
+                android:width="108dp"
+                android:height="108dp"
+                android:viewportWidth="108"
+                android:viewportHeight="108">
+                <!-- Eye icon -->
+                <path
+                    android:fillColor="@color/purple_500"
+                    android:pathData="M54,38c-14,0 -25.2,8.5 -30,20.5c4.8,12 16,20.5 30,20.5s25.2,-8.5 30,-20.5C79.2,46.5 68,38 54,38zM54,71c-6.6,0 -12,-5.4 -12,-12s5.4,-12 12,-12s12,5.4 12,12S60.6,71 54,71zM54,54c-2.8,0 -5,2.2 -5,5s2.2,5 5,5s5,-2.2 5,-5S56.8,54 54,54z"/>
+            </vector>
+        </inset>
+    </foreground>
+</adaptive-icon>
