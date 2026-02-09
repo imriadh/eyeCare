@@ -68,8 +68,12 @@ abstract class EyeCareWidgetProvider : AppWidgetProvider() {
             // Resume timer
             val pausedTime = PreferencesHelper.getPausedRemainingTime(context)
             if (pausedTime > 0) {
-                val newEndTime = System.currentTimeMillis() + pausedTime
-                PreferencesHelper.setEndTimeMillis(context, newEndTime)
+                // Calculate new lastNotificationTime to preserve remaining time
+                val intervalMillis = PreferencesHelper.getReminderInterval(context) * 60 * 1000L
+                val newLastNotificationTime = System.currentTimeMillis() - (intervalMillis - pausedTime)
+                PreferencesHelper.setLastNotificationTime(context, newLastNotificationTime)
+            } else {
+                PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
             }
             PreferencesHelper.setPauseUntil(context, 0L)
             PreferencesHelper.setPausedRemainingTime(context, 0L)
