@@ -56,6 +56,91 @@ import android.provider.AlarmClock
  * - Bottom navigation for clean UI
  * - Permission handling
  */
+
+/**
+ * Achievement Data Class
+ */
+data class Achievement(
+    val id: String,
+    val title: String,
+    val description: String,
+    val icon: String,
+    val requiredProgress: Int,
+    val getCurrentProgress: (Context) -> Int
+)
+
+/**
+ * Get all achievements
+ */
+fun getAllAchievements(): List<Achievement> {
+    return listOf(
+        Achievement(
+            id = "first_break",
+            title = "First Break",
+            description = "Take your first break",
+            icon = "🌟",
+            requiredProgress = 1,
+            getCurrentProgress = { context -> PreferencesHelper.getTotalBreaks(context) }
+        ),
+        Achievement(
+            id = "week_warrior",
+            title = "Week Warrior",
+            description = "Maintain a 7 day streak",
+            icon = "🔥",
+            requiredProgress = 7,
+            getCurrentProgress = { context -> PreferencesHelper.getCurrentStreak(context) }
+        ),
+        Achievement(
+            id = "century_club",
+            title = "Century Club",
+            description = "Complete 100 total breaks",
+            icon = "💯",
+            requiredProgress = 100,
+            getCurrentProgress = { context -> PreferencesHelper.getTotalBreaks(context) }
+        ),
+        Achievement(
+            id = "night_owl",
+            title = "Night Owl",
+            description = "Use sleep calculator 10 times",
+            icon = "🌙",
+            requiredProgress = 10,
+            getCurrentProgress = { context -> PreferencesHelper.getSleepCalcUsed(context) }
+        ),
+        Achievement(
+            id = "data_lover",
+            title = "Data Lover",
+            description = "Check stats 5 times",
+            icon = "📊",
+            requiredProgress = 5,
+            getCurrentProgress = { context -> PreferencesHelper.getStatsViewed(context) }
+        ),
+        Achievement(
+            id = "perfect_day",
+            title = "Perfect Day",
+            description = "Take 12+ breaks in one day",
+            icon = "⚡",
+            requiredProgress = 12,
+            getCurrentProgress = { context -> PreferencesHelper.getBreaksToday(context) }
+        ),
+        Achievement(
+            id = "month_master",
+            title = "Month Master",
+            description = "Maintain a 30 day streak",
+            icon = "🏅",
+            requiredProgress = 30,
+            getCurrentProgress = { context -> PreferencesHelper.getCurrentStreak(context) }
+        ),
+        Achievement(
+            id = "dedicated",
+            title = "Dedicated",
+            description = "Complete 50 total breaks",
+            icon = "💪",
+            requiredProgress = 50,
+            getCurrentProgress = { context -> PreferencesHelper.getTotalBreaks(context) }
+        )
+    )
+}
+
 class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -814,6 +899,46 @@ fun StatsScreen(paddingValues: PaddingValues) {
                             }
                         }
                     }
+                }
+            }
+        }
+        
+        // Achievements Section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "🏆 Achievements",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                
+                val achievements = remember { getAllAchievements() }
+                val unlockedAchievements = remember { PreferencesHelper.getUnlockedAchievements(context) }
+                
+                achievements.forEach { achievement ->
+                    val currentProgress = achievement.getCurrentProgress(context)
+                    val isUnlocked = unlockedAchievements.contains(achievement.id) || 
+                                    currentProgress >= achievement.requiredProgress
+                    
+                    // Auto-unlock if criteria met
+                    if (!isUnlocked && currentProgress >= achievement.requiredProgress) {
+                        PreferencesHelper.unlockAchievement(context, achievement.id)
+                    }
+                    
+                    AchievementCard(
+                        achievement = achievement,
+                        currentProgress = currentProgress,
+                        isUnlocked = isUnlocked
+                    )
                 }
             }
         }
