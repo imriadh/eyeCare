@@ -161,7 +161,7 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.BarChart, "Stats") },
+                    icon = { Icon(Icons.Default.AccountBox, "Stats") },
                     label = { Text("Stats") }
                 )
                 NavigationBarItem(

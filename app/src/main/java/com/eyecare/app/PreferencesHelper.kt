@@ -32,6 +32,11 @@ object PreferencesHelper {
     private const val KEY_LAST_RESET_DATE = "last_reset_date"
     private const val KEY_DAILY_HISTORY = "daily_history"
     
+    // Achievement Keys
+    private const val KEY_SLEEP_CALC_USED = "sleep_calc_used"
+    private const val KEY_STATS_VIEWED = "stats_viewed"
+    private const val KEY_ACHIEVEMENTS_UNLOCKED = "achievements_unlocked"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     
@@ -254,5 +259,45 @@ object PreferencesHelper {
         
         val total = last7Days.sumOf { it.value }
         return total.toFloat() / last7Days.size
+    }
+    
+    // ============ Achievement Methods ============
+    
+    // Sleep Calculator Usage
+    fun getSleepCalcUsed(context: Context): Int {
+        return getPrefs(context).getInt(KEY_SLEEP_CALC_USED, 0)
+    }
+    
+    fun incrementSleepCalcUsed(context: Context) {
+        val current = getSleepCalcUsed(context)
+        getPrefs(context).edit().putInt(KEY_SLEEP_CALC_USED, current + 1).apply()
+    }
+    
+    // Stats Viewed Count
+    fun getStatsViewed(context: Context): Int {
+        return getPrefs(context).getInt(KEY_STATS_VIEWED, 0)
+    }
+    
+    fun incrementStatsViewed(context: Context) {
+        val current = getStatsViewed(context)
+        getPrefs(context).edit().putInt(KEY_STATS_VIEWED, current + 1).apply()
+    }
+    
+    // Unlocked Achievements (stored as comma-separated IDs)
+    fun getUnlockedAchievements(context: Context): Set<String> {
+        val stored = getPrefs(context).getString(KEY_ACHIEVEMENTS_UNLOCKED, "") ?: ""
+        return if (stored.isEmpty()) emptySet() else stored.split(",").toSet()
+    }
+    
+    fun unlockAchievement(context: Context, achievementId: String) {
+        val unlocked = getUnlockedAchievements(context).toMutableSet()
+        unlocked.add(achievementId)
+        getPrefs(context).edit()
+            .putString(KEY_ACHIEVEMENTS_UNLOCKED, unlocked.joinToString(","))
+            .apply()
+    }
+    
+    fun isAchievementUnlocked(context: Context, achievementId: String): Boolean {
+        return getUnlockedAchievements(context).contains(achievementId)
     }
 }
