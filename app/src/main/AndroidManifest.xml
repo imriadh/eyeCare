@@ -45,6 +45,12 @@
                 android:value="Eye care countdown timer notification" />
         </service>
         
+        <!-- Alarm Receiver for sleep cycle alarms -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        
         <!-- WorkManager Worker -->
         <provider
             android:name="androidx.startup.InitializationProvider"
