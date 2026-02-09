@@ -13,7 +13,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -130,6 +132,7 @@ fun MainScreen(
                         when (selectedTab) {
                             0 -> "👁️ Eye Care"
                             1 -> "😴 Sleep Cycles"
+                            2 -> "📊 Statistics"
                             else -> "⚙️ Settings"
                         },
                         fontWeight = FontWeight.Bold
@@ -158,6 +161,12 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.BarChart, "Stats") },
+                    label = { Text("Stats") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
                     icon = { Icon(Icons.Default.Settings, "Settings") },
                     label = { Text("Settings") }
                 )
@@ -171,7 +180,8 @@ fun MainScreen(
                 permissionCheckTrigger = permissionCheckTrigger
             )
             1 -> SleepCycleScreen(paddingValues = paddingValues)
-            2 -> SettingsScreen(paddingValues = paddingValues)
+            2 -> StatsScreen(paddingValues = paddingValues)
+            3 -> SettingsScreen(paddingValues = paddingValues)
         }
     }
 }
@@ -244,17 +254,37 @@ fun EyeCareHomeScreen(
             CountdownTimerCard(
                 timeRemainingMillis = timeRemainingMillis,
                 enabled = remindersEnabled,
-                onTimerClick = {
-                    if (remindersEnabled && !isPaused) {
-                        // Pause the timer - save current remaining time
-                        PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
-                        val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L) // Pause for 1 hour
-                        PreferencesHelper.setPauseUntil(context, pauseUntil)
-                        isPaused = true
+                isPaused = isPaused,
+                onTogglePause = {
+                    if (remindersEnabled) {
+                        if (isPaused) {
+                            // Resume with preserved remaining time
+                            val savedRemainingTime = PreferencesHelper.getPausedRemainingTime(context)
+                            if (savedRemainingTime > 0) {
+                                val intervalMillis = PreferencesHelper.getReminderInterval(context) * 60 * 1000L
+                                val newLastNotificationTime = System.currentTimeMillis() - (intervalMillis - savedRemainingTime)
+                                PreferencesHelper.setLastNotificationTime(context, newLastNotificationTime)
+                            } else {
+                                PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                            }
+                            PreferencesHelper.setPauseUntil(context, 0)
+                            PreferencesHelper.setPausedRemainingTime(context, 0)
+                            isPaused = false
+                            // Restart notification service
+                            TimerNotificationService.stopService(context)
+                            TimerNotificationService.startService(context)
+                        } else {
+                            // Pause - save current remaining time
+                            PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
+                            val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L)
+                            PreferencesHelper.setPauseUntil(context, pauseUntil)
+                            isPaused = true
+                        }
                     }
                 },
-                onReset = {
+                onStop = {
                     if (remindersEnabled) {
+                        // Stop completely - reset timer to full interval
                         PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
                         PreferencesHelper.setPauseUntil(context, 0)
                         PreferencesHelper.setPausedRemainingTime(context, 0)
@@ -264,6 +294,17 @@ fun EyeCareHomeScreen(
                         TimerNotificationService.stopService(context)
                         TimerNotificationService.startService(context)
                     }
+                },
+                onClose = {
+                    // Fully disable reminders
+                    remindersEnabled = false
+                    PreferencesHelper.setRemindersEnabled(context, false)
+                    cancelEyeCareReminders(context)
+                    PreferencesHelper.setLastNotificationTime(context, 0)
+                    PreferencesHelper.setPauseUntil(context, 0)
+                    PreferencesHelper.setPausedRemainingTime(context, 0)
+                    isPaused = false
+                    TimerNotificationService.stopService(context)
                 }
             )
             
@@ -996,12 +1037,15 @@ private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cyc
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CountdownTimerCard(
     timeRemainingMillis: Long, 
     enabled: Boolean,
-    onTimerClick: () -> Unit,
-    onReset: () -> Unit
+    isPaused: Boolean,
+    onTogglePause: () -> Unit,
+    onStop: () -> Unit,
+    onClose: () -> Unit
 ) {
     val minutes = (timeRemainingMillis / 1000 / 60).toInt()
     val seconds = ((timeRemainingMillis / 1000) % 60).toInt()
@@ -1012,10 +1056,16 @@ fun CountdownTimerCard(
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) { onTimerClick() },
+            .combinedClickable(
+                enabled = enabled,
+                onClick = { onTogglePause() },
+                onLongClick = { onStop() }
+            ),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer 
-                           else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (enabled) {
+                if (isPaused) MaterialTheme.colorScheme.tertiaryContainer
+                else MaterialTheme.colorScheme.primaryContainer
+            } else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -1025,13 +1075,31 @@ fun CountdownTimerCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "⏰ Next Break",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
-                       else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isPaused) "⏸️ Paused" else "⏰ Next Break",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
+                           else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (enabled) {
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close reminders",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
             
             // Circular progress indicator
             Box(
@@ -1043,8 +1111,10 @@ fun CountdownTimerCard(
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 12.dp,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    color = if (enabled) MaterialTheme.colorScheme.primary 
-                           else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    color = if (enabled) {
+                        if (isPaused) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.primary
+                    } else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -1053,8 +1123,10 @@ fun CountdownTimerCard(
                         text = String.format("%02d:%02d", minutes, seconds),
                         style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (enabled) MaterialTheme.colorScheme.primary 
-                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (enabled) {
+                            if (isPaused) MaterialTheme.colorScheme.tertiary
+                            else MaterialTheme.colorScheme.primary
+                        } else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 48.sp
                     )
                     Text(
@@ -1067,27 +1139,21 @@ fun CountdownTimerCard(
             }
             
             if (enabled) {
-                Text(
-                    text = "Tap to pause • Double tap to resume",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
-                )
-                
-                // Reset button
-                OutlinedButton(
-                    onClick = onReset,
-                    modifier = Modifier.fillMaxWidth(0.6f)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Reset Timer",
-                        fontWeight = FontWeight.SemiBold
+                        text = if (isPaused) "▶️ Tap to resume" else "⏸️ Tap to pause",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "🔄 Long press to stop & reset",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
                     )
                 }
             } else {

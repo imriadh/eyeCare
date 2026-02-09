@@ -56,8 +56,22 @@ class TimerNotificationService : Service() {
             ACTION_PAUSE_RESUME -> handlePauseResume()
             ACTION_RESET -> handleReset()
             ACTION_STOP -> {
-                // Disable reminders when user closes notification
-                PreferencesHelper.setRemindersEnabled(applicationContext, false)
+                // Fully disable reminders when user closes notification
+                val context = applicationContext
+                
+                // 1. Cancel all WorkManager periodic jobs
+                androidx.work.WorkManager.getInstance(context)
+                    .cancelAllWorkByTag("eye_care_reminder_work")
+                
+                // 2. Clear timer state
+                PreferencesHelper.setLastNotificationTime(context, 0)
+                PreferencesHelper.setPauseUntil(context, 0)
+                PreferencesHelper.setPausedRemainingTime(context, 0)
+                
+                // 3. Disable reminders in preferences
+                PreferencesHelper.setRemindersEnabled(context, false)
+                
+                // 4. Stop this service
                 stopSelf()
             }
             else -> startTimerUpdates()

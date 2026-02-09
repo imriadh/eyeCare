@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     
     <!-- Permission to set alarms (for sleep cycle calculator) -->
-    <uses-permission android:name="com.android.permission.SET_ALARM" />
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
     <application
         android:allowBackup="true"
