@@ -204,6 +204,12 @@ fun EyeCareHomeScreen(
         while (true) {
             if (remindersEnabled && !isPaused) {
                 timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+            } else if (remindersEnabled && isPaused) {
+                // When paused, show the saved remaining time
+                val savedTime = PreferencesHelper.getPausedRemainingTime(context)
+                if (savedTime > 0) {
+                    timeRemainingMillis = savedTime
+                }
             } else if (!remindersEnabled) {
                 // Show default 20 minutes when not running
                 timeRemainingMillis = PreferencesHelper.DEFAULT_REMINDER_INTERVAL * 60 * 1000L

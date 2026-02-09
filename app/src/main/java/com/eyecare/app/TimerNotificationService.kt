@@ -81,11 +81,23 @@ class TimerNotificationService : Service() {
         val isPaused = PreferencesHelper.isPaused(context)
         
         if (isPaused) {
-            // Resume
+            // Resume with preserved remaining time
+            val savedRemainingTime = PreferencesHelper.getPausedRemainingTime(context)
+            if (savedRemainingTime > 0) {
+                // Calculate new lastNotificationTime to preserve remaining time
+                val intervalMillis = PreferencesHelper.getReminderInterval(context) * 60 * 1000L
+                val newLastNotificationTime = System.currentTimeMillis() - (intervalMillis - savedRemainingTime)
+                PreferencesHelper.setLastNotificationTime(context, newLastNotificationTime)
+            } else {
+                // Fallback: just reset to current time
+                PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+            }
             PreferencesHelper.setPauseUntil(context, 0)
-            PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+            PreferencesHelper.setPausedRemainingTime(context, 0)
         } else {
-            // Pause (pause for a long time, effectively pausing)
+            // Pause - save current remaining time
+            val timeRemaining = PreferencesHelper.getTimeRemainingMillis(context)
+            PreferencesHelper.setPausedRemainingTime(context, timeRemaining)
             val pauseUntil = System.currentTimeMillis() + (24 * 60 * 60 * 1000L) // 24 hours
             PreferencesHelper.setPauseUntil(context, pauseUntil)
         }
