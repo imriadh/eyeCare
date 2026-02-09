@@ -1,7 +1,9 @@
 package com.eyecare.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.work.*
 import com.eyecare.app.ui.theme.EyeCareTheme
+import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
 /**
@@ -29,9 +32,21 @@ import java.util.concurrent.TimeUnit
  * Features:
  * - Toggle for Blue Light Filter (overlay service)
  * - Toggle for 20-20-20 Rule Reminders (WorkManager notifications)
+ * - Countdown timer showing time until next break
+ * - Customizable reminder interval
+ * - Pause/Snooze functionality
  * - Permission handling for overlay and notifications
  */
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        private const val PREFS_NAME = "EyeCarePrefs"
+        private const val KEY_REMINDER_INTERVAL = "reminder_interval"
+        private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
+        private const val KEY_LAST_REMINDER_TIME = "last_reminder_time"
+        private const val KEY_PAUSED_UNTIL = "paused_until"
+        private const val KEY_FILTER_ENABLED = "filter_enabled"
+    }
 
     // Permission launcher for notification permission (Android 13+)
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -40,8 +55,24 @@ class MainActivity : ComponentActivity() {
         // Permission result handled in Compose UI state
     }
 
+    private lateinit var prefs: SharedPreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        
+        // Restore states
+        val savedFilterEnabled = prefs.getBoolean(KEY_FILTER_ENABLED, false)
+        if (savedFilterEnabled && Settings.canDrawOverlays(this)) {
+            startBlueLightService()
+        }
+        
+        val savedRemindersEnabled = prefs.getBoolean(KEY_REMINDERS_ENABLED, false)
+        if (savedRemindersEnabled) {
+            val interval = prefs.getInt(KEY_REMINDER_INTERVAL, 20)
+            scheduleEyeCareReminders(this, interval)
+        }
         
         setContent {
             EyeCareTheme {
@@ -54,7 +85,8 @@ class MainActivity : ComponentActivity() {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
-                        }
+                        },
+                        prefs = prefs
                     )
                 }
             }

@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.Worker
@@ -29,8 +31,16 @@ class EyeCareWorker(
     }
 
     override fun doWork(): Result {
+        // Check if reminders are paused
+        if (PreferencesHelper.isPaused(context)) {
+            return Result.success() // Skip notification if paused
+        }
+        
         // Send the reminder notification
         sendNotification()
+        
+        // Update last notification time
+        PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
         
         // Return success
         return Result.success()
@@ -55,24 +65,35 @@ class EyeCareWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // Build the notification
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("Eye Care Reminder \uD83D\uDC40")
+        // Build the notification with sound if enabled
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("Eye Care Reminder 👁️")
             .setContentText("Take a 20-second break to look away from the screen!")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("20-20-20 Rule: Every 20 minutes, look at something 20 feet away for 20 seconds to reduce eye strain.")
+                    .bigText("🌿 Break Instructions:\n" +
+                            "1. Look at something 20 feet (6 meters) away\n" +
+                            "2. Keep looking for 20 seconds\n" +
+                            "3. Blink frequently to refresh your eyes\n" +
+                            "4. Gently stretch your neck and shoulders")
             )
-            .build()
+        
+        // Add sound if enabled
+        if (PreferencesHelper.isSoundEnabled(context)) {
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            notificationBuilder.setSound(soundUri)
+            notificationBuilder.setDefaults(NotificationCompat.DEFAULT_ALL)
+        } else {
+            notificationBuilder.setDefaults(NotificationCompat.DEFAULT_LIGHTS or NotificationCompat.DEFAULT_VIBRATE)
+        }
 
         // Show the notification
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
     }
 
     /**
@@ -80,6 +101,12 @@ class EyeCareWorker(
      */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build()
+            
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
@@ -90,6 +117,7 @@ class EyeCareWorker(
                 enableVibration(true)
                 setShowBadge(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setSound(soundUri, audioAttributes)
             }
 
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
