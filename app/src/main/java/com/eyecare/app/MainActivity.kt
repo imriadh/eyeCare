@@ -1370,11 +1370,24 @@ fun EyeCareHomeScreen(
 }
 
 @Composable
-fun SleepCycleScreen(paddingValues: PaddingValues) {
+fun Sleep CycleScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     var selectedTime by remember { mutableStateOf(Calendar.getInstance()) }
     var isCustomTime by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showMorningPrompt by remember { mutableStateOf(false) }
+    
+    // Check if morning prompt should be shown
+    LaunchedEffect(Unit) {
+        if (PreferencesHelper.shouldShowMorningPrompt(context)) {
+            showMorningPrompt = true
+        }
+    }
+    
+    // Get active alarm
+    var activeAlarmTime by remember { mutableStateOf(PreferencesHelper.getActiveAlarmTime(context)) }
+    var activeAlarmCycles by remember { mutableStateOf(PreferencesHelper.getActiveAlarmCycles(context)) }
+    val hasActiveAlarm = activeAlarmTime > 0
     
     // Calculate sleep cycles (90 minutes each)
     val sleepCycleDuration = 90
@@ -1421,6 +1434,97 @@ fun SleepCycleScreen(paddingValues: PaddingValues) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
+            }
+        }
+        
+        // Active Alarm Card (show if alarm is set)
+        if (hasActiveAlarm) {
+            val activeAlarmCal = Calendar.getInstance().apply { timeMillis = activeAlarmTime }
+            val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "⏰", fontSize = 32.sp)
+                        Column {
+                            Text(
+                                text = "Alarm Set",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = timeFormat.format(activeAlarmCal.time),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "$activeAlarmCycles sleep cycles",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    FilledTonalIconButton(
+                        onClick = {
+                            (context as? MainActivity)?.cancelAlarm(activeAlarmTime.toInt())
+                            PreferencesHelper.clearActiveAlarm(context)
+                            activeAlarmTime = 0
+                            activeAlarmCycles = 0
+                        },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel Alarm",
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Morning Routine Card
+        if (!hasActiveAlarm) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "🌅 Morning Routine Tips",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "• Avoid snoozing - it disrupts your sleep cycle\n" +
+                                "• Open curtains for natural light\n" +
+                                "• Drink a glass of water\n" +
+                                "• Do light eye exercises\n" +
+                                "• Avoid screens for first 30 minutes",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
         
@@ -1481,7 +1585,9 @@ fun SleepCycleScreen(paddingValues: PaddingValues) {
                 cycles = cycles,
                 wakeUpTime = wakeUpTime,
                 onSetAlarm = {
-                    setAlarm(context, wakeUpTime, cycles)
+                    (context as? MainActivity)?.setAlarmInApp(wakeUpTime, cycles)
+                    activeAlarmTime = wakeUpTime.timeInMillis
+                    activeAlarmCycles = cycles
                 }
             )
         }
@@ -1523,6 +1629,76 @@ fun SleepCycleScreen(paddingValues: PaddingValues) {
                     set(Calendar.MINUTE, minute)
                 }
                 showTimePicker = false
+            }
+        )
+    }
+    
+    // Morning Prompt Dialog
+    if (showMorningPrompt) {
+        AlertDialog(
+            onDismissRequest = { 
+                showMorningPrompt = false
+                PreferencesHelper.setMorningPromptShown(context)
+            },
+            title = { 
+                Text(
+                    text = "🌅 Good Morning!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "How did you sleep last night?",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        listOf(
+                            Pair("😴", 1),
+                            Pair("😕", 2),
+                            Pair("😊", 3),
+                            Pair("😃", 4),
+                            Pair("🤩", 5)
+                        ).forEach { (emoji, rating) ->
+                            FilledTonalButton(
+                                onClick = {
+                                    PreferencesHelper.saveSleepQuality(context, rating)
+                                    showMorningPrompt = false
+                                    PreferencesHelper.setMorningPromptShown(context)
+                                    PreferencesHelper.clearActiveAlarm(context)
+                                    activeAlarmTime = 0
+                                    activeAlarmCycles = 0
+                                    Toast.makeText(context, "Sleep quality saved!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(56.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(text = emoji, fontSize = 24.sp)
+                            }
+                        }
+                    }
+                    Text(
+                        text = "Poor ← → Excellent",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showMorningPrompt = false
+                    PreferencesHelper.setMorningPromptShown(context)
+                }) {
+                    Text("Skip")
+                }
             }
         )
     }
@@ -3964,80 +4140,88 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
     return baseTime
 }
 
-private fun setAlarm(context: android.content.Context, wakeUpTime: Calendar, cycles: Int) {
+fun setAlarmInApp(wakeUpTime: Calendar, cycles: Int) {
     try {
         // Track sleep calculator usage for achievements
-        PreferencesHelper.incrementSleepCalcUsed(context)
+        PreferencesHelper.incrementSleepCalcUsed(this)
         
-        // Primary method: Use AlarmClock intent to open alarm app with pre-filled data
-        // This is the most reliable method that works on all Android versions
-        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_HOUR, wakeUpTime.get(Calendar.HOUR_OF_DAY))
-            putExtra(AlarmClock.EXTRA_MINUTES, wakeUpTime.get(Calendar.MINUTE))
-            putExtra(AlarmClock.EXTRA_MESSAGE, "$cycles Sleep Cycles - Eye Care")
-            putExtra(AlarmClock.EXTRA_SKIP_UI, false) // Show the alarm UI so user can confirm
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, AlarmReceiver::class.java).apply {
+            putExtra(AlarmReceiver.EXTRA_ALARM_MESSAGE, "Wake up! $cycles sleep cycles complete")
+            putExtra(AlarmReceiver.EXTRA_CYCLES, cycles)
         }
         
-        // Check if there's an app that can handle this intent
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
-            
-            // Show confirmation
-            android.widget.Toast.makeText(
-                context,
-                "⏰ Setting alarm for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))} ($cycles cycles)",
-                android.widget.Toast.LENGTH_LONG
-            ).show()
-        } else {
-            // Fallback: Try to open default clock app
-            val clockIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            
-            // Try common clock app package names
-            val clockPackages = listOf(
-                "com.google.android.deskclock",
-                "com.android.deskclock",
-                "com.samsung.android.app.clockpackage",
-                "com.sec.android.app.clockpackage"
-            )
-            
-            var opened = false
-            for (packageName in clockPackages) {
-                try {
-                    clockIntent.setPackage(packageName)
-                    if (clockIntent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(clockIntent)
-                        opened = true
-                        android.widget.Toast.makeText(
-                            context,
-                            "⏰ Opening clock app - Please set alarm for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))}",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                        break
-                    }
-                } catch (e: Exception) {
-                    continue
-                }
-            }
-            
-            if (!opened) {
-                android.widget.Toast.makeText(
-                    context,
-                    "❌ Unable to open clock app. Please set alarm manually for ${String.format("%02d:%02d", wakeUpTime.get(Calendar.HOUR_OF_DAY), wakeUpTime.get(Calendar.MINUTE))}",
-                    android.widget.Toast.LENGTH_LONG
+        val requestCode = wakeUpTime.timeInMillis.toInt()
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Check if we can schedule exact alarms (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    wakeUpTime.timeInMillis,
+                    pendingIntent
+                )
+            } else {
+                // Request permission to schedule exact alarms
+                val settingsIntent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                startActivity(settingsIntent)
+                Toast.makeText(
+                    this,
+                    "Please allow exact alarms to set wake-up notifications",
+                    Toast.LENGTH_LONG
                 ).show()
+                return
             }
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                wakeUpTime.timeInMillis,
+                pendingIntent
+            )
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        android.widget.Toast.makeText(
-            context,
-            "❌ Error setting alarm: ${e.message}",
-            android.widget.Toast.LENGTH_LONG
+        
+        // Save alarm info
+        PreferencesHelper.setActiveAlarm(this, wakeUpTime.timeInMillis, cycles)
+        
+        // Show confirmation
+        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+        Toast.makeText(
+            this,
+            "⏰ Alarm set for ${timeFormat.format(wakeUpTime.time)} ($cycles cycles)",
+            Toast.LENGTH_LONG
         ).show()
+    } catch (e: Exception) {
+        Toast.makeText(
+            this,
+            "Failed to set alarm: ${e.message}",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+
+fun cancelAlarm(requestCode: Int) {
+    try {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
+        
+        Toast.makeText(this, "Alarm cancelled", Toast.LENGTH_SHORT).show()
+    } catch (e: Exception) {
+        Toast.makeText(this, "Failed to cancel alarm", Toast.LENGTH_SHORT).show()
     }
 }
 

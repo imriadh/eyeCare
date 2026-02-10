@@ -68,6 +68,13 @@ object PreferencesHelper {
     // Onboarding Key
     private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
     
+    // Sleep Alarm Keys
+    private const val KEY_ACTIVE_ALARM_TIME = "active_alarm_time"
+    private const val KEY_ACTIVE_ALARM_CYCLES = "active_alarm_cycles"
+    private const val KEY_LAST_ALARM_SET_DATE = "last_alarm_set_date"
+    private const val KEY_SLEEP_QUALITY_RATINGS = "sleep_quality_ratings"
+    private const val KEY_SHOW_MORNING_PROMPT = "show_morning_prompt"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     const val DEFAULT_BREAK_DURATION = 20 // seconds
@@ -602,5 +609,64 @@ object PreferencesHelper {
     
     fun setOnboardingCompleted(context: Context, completed: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+    }
+    
+    // Sleep Alarm Methods
+    fun getActiveAlarmTime(context: Context): Long {
+        return getPrefs(context).getLong(KEY_ACTIVE_ALARM_TIME, 0L)
+    }
+    
+    fun setActiveAlarm(context: Context, timeMillis: Long, cycles: Int) {
+        getPrefs(context).edit()
+            .putLong(KEY_ACTIVE_ALARM_TIME, timeMillis)
+            .putInt(KEY_ACTIVE_ALARM_CYCLES, cycles)
+            .putLong(KEY_LAST_ALARM_SET_DATE, System.currentTimeMillis())
+            .putBoolean(KEY_SHOW_MORNING_PROMPT, true)
+            .apply()
+    }
+    
+    fun getActiveAlarmCycles(context: Context): Int {
+        return getPrefs(context).getInt(KEY_ACTIVE_ALARM_CYCLES, 0)
+    }
+    
+    fun clearActiveAlarm(context: Context) {
+        getPrefs(context).edit()
+            .putLong(KEY_ACTIVE_ALARM_TIME, 0L)
+            .putInt(KEY_ACTIVE_ALARM_CYCLES, 0)
+            .apply()
+    }
+    
+    fun shouldShowMorningPrompt(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_SHOW_MORNING_PROMPT, false)
+    }
+    
+    fun setMorningPromptShown(context: Context) {
+        getPrefs(context).edit().putBoolean(KEY_SHOW_MORNING_PROMPT, false).apply()
+    }
+    
+    fun saveSleepQuality(context: Context, rating: Int) {
+        val ratings = getSleepQualityRatings(context).toMutableList()
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        ratings.add(0, "$today:$rating")
+        // Keep last 30 ratings
+        if (ratings.size > 30) {
+            ratings.removeAt(ratings.size - 1)
+        }
+        val ratingsString = ratings.joinToString(",")
+        getPrefs(context).edit().putString(KEY_SLEEP_QUALITY_RATINGS, ratingsString).apply()
+    }
+    
+    fun getSleepQualityRatings(context: Context): List<String> {
+        val ratingsString = getPrefs(context).getString(KEY_SLEEP_QUALITY_RATINGS, "") ?: ""
+        return if (ratingsString.isEmpty()) emptyList() else ratingsString.split(",")
+    }
+    
+    fun getAverageSleepQuality(context: Context): Float {
+        val ratings = getSleepQualityRatings(context)
+        if (ratings.isEmpty()) return 0f
+        val sum = ratings.mapNotNull { 
+            it.split(":").getOrNull(1)?.toIntOrNull() 
+        }.sum()
+        return sum.toFloat() / ratings.size
     }
 }
