@@ -56,6 +56,13 @@ object PreferencesHelper {
     private const val KEY_BREAK_DURATION = "break_duration"
     private const val KEY_SELECTED_PRESET = "selected_preset"
     
+    // Health Reminder Keys
+    private const val KEY_WATER_REMINDER_ENABLED = "water_reminder_enabled"
+    private const val KEY_POSTURE_REMINDER_ENABLED = "posture_reminder_enabled"
+    private const val KEY_STRETCH_REMINDER_ENABLED = "stretch_reminder_enabled"
+    private const val KEY_BRIGHTNESS_CHECK_ENABLED = "brightness_check_enabled"
+    private const val KEY_COMBINED_NOTIFICATIONS = "combined_notifications"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     const val DEFAULT_BREAK_DURATION = 20 // seconds
@@ -161,6 +168,51 @@ object PreferencesHelper {
     
     fun setSelectedPreset(context: Context, preset: String) {
         getPrefs(context).edit().putString(KEY_SELECTED_PRESET, preset).apply()
+    }
+    
+    // Water Reminder
+    fun isWaterReminderEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_WATER_REMINDER_ENABLED, false)
+    }
+    
+    fun setWaterReminderEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_WATER_REMINDER_ENABLED, enabled).apply()
+    }
+    
+    // Posture Reminder
+    fun isPostureReminderEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_POSTURE_REMINDER_ENABLED, false)
+    }
+    
+    fun setPostureReminderEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_POSTURE_REMINDER_ENABLED, enabled).apply()
+    }
+    
+    // Stretch Reminder
+    fun isStretchReminderEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_STRETCH_REMINDER_ENABLED, false)
+    }
+    
+    fun setStretchReminderEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_STRETCH_REMINDER_ENABLED, enabled).apply()
+    }
+    
+    // Brightness Check
+    fun isBrightnessCheckEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_BRIGHTNESS_CHECK_ENABLED, false)
+    }
+    
+    fun setBrightnessCheckEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_BRIGHTNESS_CHECK_ENABLED, enabled).apply()
+    }
+    
+    // Combined Notifications
+    fun isCombinedNotificationsEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_COMBINED_NOTIFICATIONS, false)
+    }
+    
+    fun setCombinedNotificationsEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_COMBINED_NOTIFICATIONS, enabled).apply()
     }
     
     // Calculate time remaining until next break

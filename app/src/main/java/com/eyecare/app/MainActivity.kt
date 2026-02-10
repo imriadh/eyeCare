@@ -2147,6 +2147,230 @@ fun BreakRulesSettings() {
 }
 
 @Composable
+fun HealthRemindersSettings() {
+    val context = LocalContext.current
+    var waterEnabled by remember { mutableStateOf(PreferencesHelper.isWaterReminderEnabled(context)) }
+    var postureEnabled by remember { mutableStateOf(PreferencesHelper.isPostureReminderEnabled(context)) }
+    var stretchEnabled by remember { mutableStateOf(PreferencesHelper.isStretchReminderEnabled(context)) }
+    var brightnessEnabled by remember { mutableStateOf(PreferencesHelper.isBrightnessCheckEnabled(context)) }
+    var combinedEnabled by remember { mutableStateOf(PreferencesHelper.isCombinedNotificationsEnabled(context)) }
+    
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Water Reminder Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "💧 Water Reminder",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Every 2 hours • Stay hydrated",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = waterEnabled,
+                        onCheckedChange = { enabled ->
+                            waterEnabled = enabled
+                            PreferencesHelper.setWaterReminderEnabled(context, enabled)
+                            HealthReminderWorker.scheduleHealthReminders(context)
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Posture Check Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "🪑 Posture Check",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Every hour • Sit up straight",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = postureEnabled,
+                        onCheckedChange = { enabled ->
+                            postureEnabled = enabled
+                            PreferencesHelper.setPostureReminderEnabled(context, enabled)
+                            HealthReminderWorker.scheduleHealthReminders(context)
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Stand & Stretch Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "🚶 Stand & Stretch",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Every 90 minutes • Move around",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = stretchEnabled,
+                        onCheckedChange = { enabled ->
+                            stretchEnabled = enabled
+                            PreferencesHelper.setStretchReminderEnabled(context, enabled)
+                            HealthReminderWorker.scheduleHealthReminders(context)
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Screen Brightness Check Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "☀️ Screen Brightness Check",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Every 30 minutes • Adjust screen",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = brightnessEnabled,
+                        onCheckedChange = { enabled ->
+                            brightnessEnabled = enabled
+                            PreferencesHelper.setBrightnessCheckEnabled(context, enabled)
+                            HealthReminderWorker.scheduleHealthReminders(context)
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Combined Notifications Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "📱 Combined Notifications",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Group all health reminders together",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                    Switch(
+                        checked = combinedEnabled,
+                        onCheckedChange = { enabled ->
+                            combinedEnabled = enabled
+                            PreferencesHelper.setCombinedNotificationsEnabled(context, enabled)
+                            HealthReminderWorker.scheduleHealthReminders(context)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SettingsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     
@@ -2299,6 +2523,14 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         )
         
         BreakRulesSettings()
+        
+        Text(
+            text = "🏥 Health & Wellness",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        
+        HealthRemindersSettings()
         
         Text(
             text = "🔔 Notification Settings",
