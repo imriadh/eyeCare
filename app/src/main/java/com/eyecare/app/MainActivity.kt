@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -876,44 +877,83 @@ class MainActivity : ComponentActivity() {
         // Initialize reminders on first launch if enabled by default
         initializeReminders()
         
+        // Track screen time start for auto dark mode
+        if (PreferencesHelper.getScreenTimeStart(this) == 0L) {
+            PreferencesHelper.setScreenTimeStart(this, System.currentTimeMillis())
+        }
+        
         setContent {
-            EyeCareTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    var showOnboarding by remember { 
-                        mutableStateOf(!PreferencesHelper.isOnboardingCompleted(this@MainActivity)) 
+            val context = LocalContext.current
+            val systemInDarkTheme = isSystemInDarkTheme()
+            
+            // Get theme preferences
+            val themeMode = remember { mutableStateOf(PreferencesHelper.getThemeMode(context)) }
+            val blueLightFilterEnabled = remember { mutableStateOf(PreferencesHelper.isBlueLightFilterEnabled(context)) }
+            val blueLightIntensity = remember { mutableStateOf(PreferencesHelper.getBlueLightFilterIntensity(context)) }
+            
+            // Determine dark theme and amoled mode
+            val darkTheme = when (themeMode.value) {
+                "light" -> false
+                "dark", "amoled" -> true
+                "auto" -> {
+                    // Auto mode: switch to dark if screen time exceeds trigger
+                    val autoDarkEnabled = PreferencesHelper.isAutoDarkModeEnabled(context)
+                    val screenTimeMinutes = PreferencesHelper.getActiveScreenTimeMinutes(context)
+                    val triggerMinutes = PreferencesHelper.getAutoDarkModeTriggerMinutes(context)
+                    autoDarkEnabled && screenTimeMinutes >= triggerMinutes
+                }
+                else -> systemInDarkTheme // "system"
+            }
+            val amoledMode = themeMode.value == "amoled"
+            
+            EyeCareTheme(
+                darkTheme = darkTheme,
+                amoledMode = amoledMode
+            ) {
+                // Blue Light Filter Overlay
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        var showOnboarding by remember { 
+                            mutableStateOf(!PreferencesHelper.isOnboardingCompleted(this@MainActivity)) 
+                        }
+                        
+                        if (showOnboarding) {
+                            OnboardingScreen(
+                                onComplete = {
+                                    showOnboarding = false
+                                    // Request permissions after onboarding
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                                        if (!alarmManager.canScheduleExactAlarms()) {
+                                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                                            startActivity(intent)
+                                        }
+                                    }
+                                    // Initialize reminders after onboarding
+                                    initializeReminders()
+                                }
+                            )
+                        } else {
+                            MainScreen(
+                                onRequestNotificationPermission = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                },
+                                permissionCheckTrigger = permissionCheckTrigger
+                            )
+                        }
                     }
                     
-                    if (showOnboarding) {
-                        OnboardingScreen(
-                            onComplete = {
-                                showOnboarding = false
-                                // Request permissions after onboarding
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                                    if (!alarmManager.canScheduleExactAlarms()) {
-                                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                                        startActivity(intent)
-                                    }
-                                }
-                                // Initialize reminders after onboarding
-                                initializeReminders()
-                            }
-                        )
-                    } else {
-                        MainScreen(
-                            onRequestNotificationPermission = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            },
-                            permissionCheckTrigger = permissionCheckTrigger
-                        )
+                    // Blue Light Filter Overlay
+                    if (blueLightFilterEnabled.value) {
+                        BlueLightFilterOverlay(intensity = blueLightIntensity.value)
                     }
                 }
             }
@@ -2325,6 +2365,215 @@ fun AchievementCard(
 }
 
 @Composable
+fun AppearanceSettings() {
+    val context = LocalContext.current
+    var themeMode by remember { mutableStateOf(PreferencesHelper.getThemeMode(context)) }
+    var blueLightFilterEnabled by remember { mutableStateOf(PreferencesHelper.isBlueLightFilterEnabled(context)) }
+    var blueLightIntensity by remember { mutableStateOf(PreferencesHelper.getBlueLightFilterIntensity(context).toFloat()) }
+    var autoDarkModeEnabled by remember { mutableStateOf(PreferencesHelper.isAutoDarkModeEnabled(context)) }
+    var autoDarkTrigger by remember { mutableStateOf(PreferencesHelper.getAutoDarkModeTriggerMinutes(context).toFloat()) }
+    var showIntensitySlider by remember { mutableStateOf(blueLightFilterEnabled) }
+    
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Theme Mode Selection
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = "Theme",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Theme Mode",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = when (themeMode) {
+                            "light" -> "Always Light"
+                            "dark" -> "Always Dark"
+                            "amoled" -> "AMOLED Black"
+                            "auto" -> "Auto (based on screen time)"
+                            else -> "Follow System"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Theme Mode Options
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemeChip("System", "system", themeMode) { 
+                    themeMode = it
+                    PreferencesHelper.setThemeMode(context, it)
+                }
+                ThemeChip("Light", "light", themeMode) { 
+                    themeMode = it
+                    PreferencesHelper.setThemeMode(context, it)
+                }
+                ThemeChip("Dark", "dark", themeMode) { 
+                    themeMode = it
+                    PreferencesHelper.setThemeMode(context, it)
+                }
+                ThemeChip("AMOLED", "amoled", themeMode) { 
+                    themeMode = it
+                    PreferencesHelper.setThemeMode(context, it)
+                }
+                ThemeChip("Auto", "auto", themeMode) { 
+                    themeMode = it
+                    PreferencesHelper.setThemeMode(context, it)
+                }
+            }
+            
+            // Auto Dark Mode Settings (shown when auto mode selected)
+            if (themeMode == "auto") {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = "Auto Dark",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Enable Auto Dark Mode",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Switch to dark mode after ${autoDarkTrigger.toInt()} min of screen time",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = autoDarkModeEnabled,
+                        onCheckedChange = {
+                            autoDarkModeEnabled = it
+                            PreferencesHelper.setAutoDarkModeEnabled(context, it)
+                        }
+                    )
+                }
+                
+                if (autoDarkModeEnabled) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Trigger after: ${autoDarkTrigger.toInt()} minutes",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Slider(
+                            value = autoDarkTrigger,
+                            onValueChange = { autoDarkTrigger = it },
+                            onValueChangeFinished = {
+                                PreferencesHelper.setAutoDarkModeTriggerMinutes(context, autoDarkTrigger.toInt())
+                            },
+                            valueRange = 5f..60f,
+                            steps = 10
+                        )
+                    }
+                }
+            }
+            
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+            
+            // Blue Light Filter
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LightMode,
+                    contentDescription = "Blue Light Filter",
+                    modifier = Modifier.size(24.dp),
+                    tint = androidx.compose.ui.graphics.Color(0xFFFF9500)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Blue Light Filter",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Warm orange overlay to reduce eye strain",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = blueLightFilterEnabled,
+                    onCheckedChange = {
+                        blueLightFilterEnabled = it
+                        showIntensitySlider = it
+                        PreferencesHelper.setBlueLightFilterEnabled(context, it)
+                    }
+                )
+            }
+            
+            if (showIntensitySlider && blueLightFilterEnabled) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Filter Intensity: ${blueLightIntensity.toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Slider(
+                        value = blueLightIntensity,
+                        onValueChange = { blueLightIntensity = it },
+                        onValueChangeFinished = {
+                            PreferencesHelper.setBlueLightFilterIntensity(context, blueLightIntensity.toInt())
+                        },
+                        valueRange = 10f..100f,
+                        steps = 8
+                    )
+                    Text(
+                        text = "💡 Tip: Higher intensity provides more protection but may affect color accuracy",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ThemeChip(
+    label: String,
+    value: String,
+    currentValue: String,
+    onSelect: (String) -> Unit
+) {
+    FilterChip(
+        selected = currentValue == value,
+        onClick = { onSelect(value) },
+        label = { Text(label) },
+        leadingIcon = if (currentValue == value) {
+            { Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+        } else null
+    )
+}
+
+@Composable
 fun SmartBreaksSettings() {
     val context = LocalContext.current
     var smartBreaksEnabled by remember { mutableStateOf(PreferencesHelper.isSmartBreaksEnabled(context)) }
@@ -3518,6 +3767,14 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         }
         
         Text(
+            text = "🎨 Appearance",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        
+        AppearanceSettings()
+        
+        Text(
             text = "📚 About",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
@@ -4223,6 +4480,21 @@ fun ExerciseCompletionDialog(
 private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar {
     baseTime.add(Calendar.MINUTE, minutesToAdd + 15) // Add 15 minutes to fall asleep
     return baseTime
+}
+
+@Composable
+fun BlueLightFilterOverlay(intensity: Int) {
+    // Convert intensity (0-100) to alpha (0.0-0.5)
+    val alpha = (intensity / 100f) * 0.5f
+    
+    // Orange/amber tint to reduce blue light
+    val filterColor = androidx.compose.ui.graphics.Color(0xFFFF9500).copy(alpha = alpha)
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(filterColor)
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

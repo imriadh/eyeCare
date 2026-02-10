@@ -75,6 +75,14 @@ object PreferencesHelper {
     private const val KEY_SLEEP_QUALITY_RATINGS = "sleep_quality_ratings"
     private const val KEY_SHOW_MORNING_PROMPT = "show_morning_prompt"
     
+    // Theme Keys
+    private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_BLUE_LIGHT_FILTER_ENABLED = "blue_light_filter_enabled"
+    private const val KEY_BLUE_LIGHT_FILTER_INTENSITY = "blue_light_filter_intensity"
+    private const val KEY_AUTO_DARK_MODE_ENABLED = "auto_dark_mode_enabled"
+    private const val KEY_AUTO_DARK_MODE_TRIGGER_MINUTES = "auto_dark_mode_trigger_minutes"
+    private const val KEY_SCREEN_TIME_START = "screen_time_start"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     const val DEFAULT_BREAK_DURATION = 20 // seconds
@@ -82,6 +90,8 @@ object PreferencesHelper {
     const val DEFAULT_WORK_END = 18 // 6 PM
     const val DEFAULT_QUIET_START = 22 // 10 PM
     const val DEFAULT_QUIET_END = 7 // 7 AM
+    const val DEFAULT_AUTO_DARK_TRIGGER = 15 // minutes
+    const val DEFAULT_BLUE_LIGHT_INTENSITY = 30 // percentage
     
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -668,5 +678,61 @@ object PreferencesHelper {
             it.split(":").getOrNull(1)?.toIntOrNull() 
         }.sum()
         return sum.toFloat() / ratings.size
+    }
+    
+    // Theme Settings
+    // Theme modes: "system", "light", "dark", "auto", "amoled"
+    fun getThemeMode(context: Context): String {
+        return getPrefs(context).getString(KEY_THEME_MODE, "system") ?: "system"
+    }
+    
+    fun setThemeMode(context: Context, mode: String) {
+        getPrefs(context).edit().putString(KEY_THEME_MODE, mode).apply()
+    }
+    
+    fun isBlueLightFilterEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_BLUE_LIGHT_FILTER_ENABLED, false)
+    }
+    
+    fun setBlueLightFilterEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_BLUE_LIGHT_FILTER_ENABLED, enabled).apply()
+    }
+    
+    fun getBlueLightFilterIntensity(context: Context): Int {
+        return getPrefs(context).getInt(KEY_BLUE_LIGHT_FILTER_INTENSITY, DEFAULT_BLUE_LIGHT_INTENSITY)
+    }
+    
+    fun setBlueLightFilterIntensity(context: Context, intensity: Int) {
+        getPrefs(context).edit().putInt(KEY_BLUE_LIGHT_FILTER_INTENSITY, intensity).apply()
+    }
+    
+    fun isAutoDarkModeEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_AUTO_DARK_MODE_ENABLED, false)
+    }
+    
+    fun setAutoDarkModeEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_AUTO_DARK_MODE_ENABLED, enabled).apply()
+    }
+    
+    fun getAutoDarkModeTriggerMinutes(context: Context): Int {
+        return getPrefs(context).getInt(KEY_AUTO_DARK_MODE_TRIGGER_MINUTES, DEFAULT_AUTO_DARK_TRIGGER)
+    }
+    
+    fun setAutoDarkModeTriggerMinutes(context: Context, minutes: Int) {
+        getPrefs(context).edit().putInt(KEY_AUTO_DARK_MODE_TRIGGER_MINUTES, minutes).apply()
+    }
+    
+    fun getScreenTimeStart(context: Context): Long {
+        return getPrefs(context).getLong(KEY_SCREEN_TIME_START, 0L)
+    }
+    
+    fun setScreenTimeStart(context: Context, timeMillis: Long) {
+        getPrefs(context).edit().putLong(KEY_SCREEN_TIME_START, timeMillis).apply()
+    }
+    
+    fun getActiveScreenTimeMinutes(context: Context): Long {
+        val startTime = getScreenTimeStart(context)
+        if (startTime == 0L) return 0L
+        return (System.currentTimeMillis() - startTime) / 60000 // Convert to minutes
     }
 }
