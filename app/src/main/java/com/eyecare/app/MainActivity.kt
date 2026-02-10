@@ -48,6 +48,12 @@ import kotlin.math.roundToInt
 import android.provider.AlarmClock
 import android.widget.Toast
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.Task
 
 /**
  * MainActivity - Enhanced Eye Care App
@@ -848,10 +854,24 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { }
     
+    private lateinit var googleSignInClient: GoogleSignInClient
+    
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            handleSignInResult(task)
+        }
+    }
+    
     private var permissionCheckTrigger by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize Google Sign-In
+        initializeGoogleSignIn()
         
         // Initialize reminders on first launch if enabled by default
         initializeReminders()
@@ -924,6 +944,62 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Trigger permission check when returning from settings
         permissionCheckTrigger++
+    }
+    
+    private fun initializeGoogleSignIn() {
+        try {
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
+            googleSignInClient = GoogleSignIn.getClient(this, gso)
+        } catch (e: Exception) {
+            // Fallback: Initialize without ID token if not configured
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build()
+            googleSignInClient = GoogleSignIn.getClient(this, gso)
+        }
+    }
+    
+    private fun startGoogleSignIn() {
+        val signInIntent = googleSignInClient.signInIntent
+        googleSignInLauncher.launch(signInIntent)
+    }
+    
+    private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
+        try {
+            val account = completedTask.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            
+            if (idToken != null) {
+                // Sign in to Firebase with Google credential
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    val result = SyncManager.getInstance(this@MainActivity).signInWithGoogle(idToken)
+                    if (result.isSuccess) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "✓ Signed in successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Sign-in failed: ${result.exceptionOrNull()?.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Failed to get ID token", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: ApiException) {
+            Toast.makeText(
+                this,
+                "Sign-in failed: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 }
 
@@ -2978,11 +3054,7 @@ fun MultiDeviceSyncSettings() {
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
                         onClick = {
-                            Toast.makeText(
-                                context,
-                                "Google Sign-In requires google-services.json configuration. Please add your Firebase project configuration.",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            (context as? MainActivity)?.startGoogleSignIn()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
