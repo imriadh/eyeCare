@@ -183,6 +183,9 @@ class TimerNotificationService : Service() {
             if (currentTime - lastBreakTime > 30000) {
                 PreferencesHelper.recordBreakCompleted(context)
                 
+                // Send eye care reminder notification
+                sendEyeCareReminderNotification(context)
+                
                 // Sync statistics to Firebase
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                     SyncManager.getInstance(context).uploadStatistics()
@@ -367,6 +370,65 @@ class TimerNotificationService : Service() {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
+    }
+    
+    private fun sendEyeCareReminderNotification(context: Context) {
+        // Create a separate notification channel for eye care reminders
+        val reminderChannelId = "eye_care_reminder_alerts"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                reminderChannelId,
+                "Eye Care Reminders",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Alerts when it's time to rest your eyes"
+                enableVibration(true)
+                setShowBadge(true)
+                // Use default sound
+            }
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+        
+        // Intent to open exercises screen
+        val openExercisesIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("open_exercises", true)
+        }
+        val openExercisesPendingIntent = PendingIntent.getActivity(
+            context,
+            100,
+            openExercisesIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Build the notification
+        val soundEnabled = PreferencesHelper.isSoundEnabled(context)
+        val vibrationEnabled = PreferencesHelper.isVibrationEnabled(context)
+        
+        val builder = NotificationCompat.Builder(context, reminderChannelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("👁️ Time for Eye Care!")
+            .setContentText("Take a 20-second break to rest your eyes")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("Look at something 20 feet away for 20 seconds.\n\nTap here for guided eye exercises! 👁️"))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(openExercisesPendingIntent)
+        
+        if (!soundEnabled) {
+            builder.setSound(null)
+        }
+        
+        if (!vibrationEnabled) {
+            builder.setVibrate(null)
+        } else {
+            builder.setVibrate(longArrayOf(0, 300, 200, 300))
+        }
+        
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(3002, builder.build())
     }
 
     override fun onDestroy() {
