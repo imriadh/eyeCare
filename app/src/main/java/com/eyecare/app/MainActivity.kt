@@ -4689,14 +4689,15 @@ fun CountdownTimerCard(
                                             MaterialTheme.colorScheme.tertiary
                                     )
                                 ) {
-                                    Icon(
-                                        imageVector = if (isPaused) 
-                                            Icons.Default.PlayArrow  // Triangle shape
-                                        else 
-                                            Icons.Default.Settings,   // Pause bars (using settings as placeholder)
-                                        contentDescription = if (isPaused) "Start" else "Pause",
-                                        modifier = Modifier.size(32.dp)
-                                    )
+                                    if (isPaused) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "Start",
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    } else {
+                                        PauseIcon(modifier = Modifier.size(32.dp))
+                                    }
                                 }
                             }
                         } else {
