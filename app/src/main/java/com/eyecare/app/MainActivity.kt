@@ -60,6 +60,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
+import coil.compose.AsyncImage
 
 /**
  * MainActivity - Enhanced Eye Care App
@@ -3764,30 +3765,39 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 ) {
                     // User Photo
                     Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ),
+                        modifier = Modifier.size(64.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (userPhotoUrl.value != null) {
-                            // TODO: Load image from URL using Coil library
-                            // For now, show initials
-                            Text(
-                                text = userName.value?.firstOrNull()?.uppercase() ?: "U",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
+                            // Load image from Google profile URL
+                            AsyncImage(
+                                model = userPhotoUrl.value,
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    )
                             )
                         } else {
-                            Text(
-                                text = userName.value?.firstOrNull()?.uppercase() ?: "U",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                            // Fallback to initials
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = userName.value?.firstOrNull()?.uppercase() ?: "U",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
                     
