@@ -37,6 +37,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.*
 import com.eyecare.app.ui.theme.EyeCareTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -2196,7 +2197,7 @@ fun HealthRemindersSettings() {
                             waterEnabled = enabled
                             PreferencesHelper.setWaterReminderEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
-                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                            scope.launch {
                                 syncManager.uploadSettings()
                             }
                         }
@@ -2241,7 +2242,7 @@ fun HealthRemindersSettings() {
                             postureEnabled = enabled
                             PreferencesHelper.setPostureReminderEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
-                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                            scope.launch {
                                 syncManager.uploadSettings()
                             }
                         }
@@ -2286,7 +2287,7 @@ fun HealthRemindersSettings() {
                             stretchEnabled = enabled
                             PreferencesHelper.setStretchReminderEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
-                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                            scope.launch {
                                 syncManager.uploadSettings()
                             }
                         }
@@ -2331,7 +2332,7 @@ fun HealthRemindersSettings() {
                             brightnessEnabled = enabled
                             PreferencesHelper.setBrightnessCheckEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
-                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                            scope.launch {
                                 syncManager.uploadSettings()
                             }
                         }
@@ -2376,7 +2377,7 @@ fun HealthRemindersSettings() {
                             combinedEnabled = enabled
                             PreferencesHelper.setCombinedNotificationsEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
-                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                            scope.launch {
                                 syncManager.uploadSettings()
                             }
                         }
@@ -2445,7 +2446,7 @@ fun MultiDeviceSyncSettings() {
                             onClick = { showSignOutDialog = true }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Logout,
+                                imageVector = Icons.Default.ExitToApp,
                                 contentDescription = "Sign Out"
                             )
                         }
@@ -2541,7 +2542,7 @@ fun MultiDeviceSyncSettings() {
                         // Manual Sync Button
                         OutlinedButton(
                             onClick = {
-                                kotlinx.coroutines.launch(scope.coroutineContext) {
+                                scope.launch {
                                     isSyncing = true
                                     syncManager.uploadAllData()
                                     delay(1000)
@@ -2561,7 +2562,7 @@ fun MultiDeviceSyncSettings() {
                                 Text("Syncing...")
                             } else {
                                 Icon(
-                                    imageVector = Icons.Default.Sync,
+                                    imageVector = Icons.Default.Refresh,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -2581,7 +2582,7 @@ fun MultiDeviceSyncSettings() {
             onDismissRequest = { showSignOutDialog = false },
             icon = {
                 Icon(
-                    imageVector = Icons.Default.Logout,
+                    imageVector = Icons.Default.ExitToApp,
                     contentDescription = null
                 )
             },
@@ -2590,7 +2591,7 @@ fun MultiDeviceSyncSettings() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        kotlinx.coroutines.launch(scope.coroutineContext) {
+                        scope.launch {
                             syncManager.signOut()
                             isSignedIn = false
                             userEmail = null

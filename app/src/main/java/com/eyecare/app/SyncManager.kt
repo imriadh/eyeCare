@@ -7,6 +7,9 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 /**
@@ -141,14 +144,14 @@ class SyncManager private constructor(private val context: Context) {
             val stats = SyncStatistics(
                 totalBreaks = PreferencesHelper.getTotalBreaks(context),
                 currentStreak = PreferencesHelper.getCurrentStreak(context),
-                longestStreak = PreferencesHelper.getLongestStreak(context),
-                lastBreakDate = PreferencesHelper.getLastBreakDate(context),
+                longestStreak = PreferencesHelper.getBestStreak(context),
+                lastBreakDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
                 dailyHistory = PreferencesHelper.getDailyHistory(context),
-                totalBlinks = PreferencesHelper.getTotalBlinks(context),
-                totalFocusShifts = PreferencesHelper.getTotalFocusShifts(context),
-                totalRotations = PreferencesHelper.getTotalRotations(context),
-                totalPalming = PreferencesHelper.getTotalPalming(context),
-                totalFollowDot = PreferencesHelper.getTotalFollowDot(context),
+                totalBlinks = 0,
+                totalFocusShifts = 0,
+                totalRotations = 0,
+                totalPalming = 0,
+                totalFollowDot = 0,
                 lastUpdated = System.currentTimeMillis()
             )
             
@@ -365,9 +368,7 @@ class SyncManager private constructor(private val context: Context) {
         PreferencesHelper.setCombinedNotificationsEnabled(context, settings.combinedNotifications)
         
         // Restart timers with new settings
-        if (TimerNotificationService.isServiceRunning) {
-            TimerNotificationService.startService(context)
-        }
+        TimerNotificationService.startService(context)
         
         Log.d(TAG, "Settings applied locally from sync")
     }
@@ -382,9 +383,7 @@ class SyncManager private constructor(private val context: Context) {
         }
         
         // Update timer service
-        if (TimerNotificationService.isServiceRunning) {
-            TimerNotificationService.startService(context)
-        }
+        TimerNotificationService.startService(context)
         
         Log.d(TAG, "Timer state applied locally from sync")
     }
