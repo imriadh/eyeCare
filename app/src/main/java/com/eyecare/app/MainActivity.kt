@@ -985,6 +985,91 @@ class MainActivity : ComponentActivity() {
             ).show()
         }
     }
+    
+    fun setAlarmInApp(wakeUpTime: Calendar, cycles: Int) {
+        try {
+            // Track sleep calculator usage for achievements
+            PreferencesHelper.incrementSleepCalcUsed(this)
+            
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(this, AlarmReceiver::class.java).apply {
+                putExtra(AlarmReceiver.EXTRA_ALARM_MESSAGE, "Wake up! $cycles sleep cycles complete")
+                putExtra(AlarmReceiver.EXTRA_CYCLES, cycles)
+            }
+            
+            val requestCode = wakeUpTime.timeInMillis.toInt()
+            val pendingIntent = PendingIntent.getBroadcast(
+                this,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            // Check if we can schedule exact alarms (Android 12+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        wakeUpTime.timeInMillis,
+                        pendingIntent
+                    )
+                } else {
+                    // Request permission to schedule exact alarms
+                    val settingsIntent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    startActivity(settingsIntent)
+                    Toast.makeText(
+                        this,
+                        "Please allow exact alarms to set wake-up notifications",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return
+                }
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    wakeUpTime.timeInMillis,
+                    pendingIntent
+                )
+            }
+            
+            // Save alarm info
+            PreferencesHelper.setActiveAlarm(this, wakeUpTime.timeInMillis, cycles)
+            
+            // Show confirmation
+            val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            Toast.makeText(
+                this,
+                "⏰ Alarm set for ${timeFormat.format(wakeUpTime.time)} ($cycles cycles)",
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                "Failed to set alarm: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    
+    fun cancelAlarm(requestCode: Int) {
+        try {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(this, AlarmReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                this,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            alarmManager.cancel(pendingIntent)
+            pendingIntent.cancel()
+            
+            Toast.makeText(this, "Alarm cancelled", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to cancel alarm", Toast.LENGTH_SHORT).show()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1370,7 +1455,7 @@ fun EyeCareHomeScreen(
 }
 
 @Composable
-fun Sleep CycleScreen(paddingValues: PaddingValues) {
+fun SleepCycleScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     var selectedTime by remember { mutableStateOf(Calendar.getInstance()) }
     var isCustomTime by remember { mutableStateOf(false) }
@@ -1439,7 +1524,7 @@ fun Sleep CycleScreen(paddingValues: PaddingValues) {
         
         // Active Alarm Card (show if alarm is set)
         if (hasActiveAlarm) {
-            val activeAlarmCal = Calendar.getInstance().apply { timeMillis = activeAlarmTime }
+            val activeAlarmCal = Calendar.getInstance().apply { timeInMillis = activeAlarmTime }
             val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
             
             ElevatedCard(
@@ -4138,91 +4223,6 @@ fun ExerciseCompletionDialog(
 private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar {
     baseTime.add(Calendar.MINUTE, minutesToAdd + 15) // Add 15 minutes to fall asleep
     return baseTime
-}
-
-fun setAlarmInApp(wakeUpTime: Calendar, cycles: Int) {
-    try {
-        // Track sleep calculator usage for achievements
-        PreferencesHelper.incrementSleepCalcUsed(this)
-        
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, AlarmReceiver::class.java).apply {
-            putExtra(AlarmReceiver.EXTRA_ALARM_MESSAGE, "Wake up! $cycles sleep cycles complete")
-            putExtra(AlarmReceiver.EXTRA_CYCLES, cycles)
-        }
-        
-        val requestCode = wakeUpTime.timeInMillis.toInt()
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        // Check if we can schedule exact alarms (Android 12+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    wakeUpTime.timeInMillis,
-                    pendingIntent
-                )
-            } else {
-                // Request permission to schedule exact alarms
-                val settingsIntent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                startActivity(settingsIntent)
-                Toast.makeText(
-                    this,
-                    "Please allow exact alarms to set wake-up notifications",
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
-        } else {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                wakeUpTime.timeInMillis,
-                pendingIntent
-            )
-        }
-        
-        // Save alarm info
-        PreferencesHelper.setActiveAlarm(this, wakeUpTime.timeInMillis, cycles)
-        
-        // Show confirmation
-        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
-        Toast.makeText(
-            this,
-            "⏰ Alarm set for ${timeFormat.format(wakeUpTime.time)} ($cycles cycles)",
-            Toast.LENGTH_LONG
-        ).show()
-    } catch (e: Exception) {
-        Toast.makeText(
-            this,
-            "Failed to set alarm: ${e.message}",
-            Toast.LENGTH_LONG
-        ).show()
-    }
-}
-
-fun cancelAlarm(requestCode: Int) {
-    try {
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, AlarmReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        alarmManager.cancel(pendingIntent)
-        pendingIntent.cancel()
-        
-        Toast.makeText(this, "Alarm cancelled", Toast.LENGTH_SHORT).show()
-    } catch (e: Exception) {
-        Toast.makeText(this, "Failed to cancel alarm", Toast.LENGTH_SHORT).show()
-    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
