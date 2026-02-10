@@ -990,6 +990,18 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Trigger permission check when returning from settings
         permissionCheckTrigger++
+        
+        // Resume screen time tracking for auto dark mode
+        if (PreferencesHelper.getScreenTimeStart(this) == 0L) {
+            PreferencesHelper.setScreenTimeStart(this, System.currentTimeMillis())
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Reset screen time tracking when app goes to background
+        // This ensures auto dark mode only tracks actual active app usage
+        PreferencesHelper.setScreenTimeStart(this, 0L)
     }
     
     private fun initializeGoogleSignIn() {
@@ -1315,6 +1327,7 @@ fun EyeCareHomeScreen(
                     PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
                     PreferencesHelper.setPauseUntil(context, 0)
                     PreferencesHelper.setPausedRemainingTime(context, 0)
+                    PreferencesHelper.setTimerCompleted(context, false)
                     isPaused = false
                     timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
                     // Restart notification service if enabled
@@ -1472,10 +1485,14 @@ fun EyeCareHomeScreen(
         PauseDialog(
             onDismiss = { showPauseDialog = false },
             onPause = { minutes ->
+                // Save current remaining time before pausing
+                PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
                 val pauseUntil = System.currentTimeMillis() + (minutes * 60 * 1000)
                 PreferencesHelper.setPauseUntil(context, pauseUntil)
                 isPaused = true
                 showPauseDialog = false
+                // Update widgets
+                EyeCareWidgetProvider.updateAllWidgets(context)
             }
         )
     }
