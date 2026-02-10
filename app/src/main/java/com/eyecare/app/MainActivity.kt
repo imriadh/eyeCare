@@ -2149,6 +2149,8 @@ fun BreakRulesSettings() {
 @Composable
 fun HealthRemindersSettings() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val syncManager = remember { SyncManager.getInstance(context) }
     var waterEnabled by remember { mutableStateOf(PreferencesHelper.isWaterReminderEnabled(context)) }
     var postureEnabled by remember { mutableStateOf(PreferencesHelper.isPostureReminderEnabled(context)) }
     var stretchEnabled by remember { mutableStateOf(PreferencesHelper.isStretchReminderEnabled(context)) }
@@ -2194,6 +2196,9 @@ fun HealthRemindersSettings() {
                             waterEnabled = enabled
                             PreferencesHelper.setWaterReminderEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
+                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                                syncManager.uploadSettings()
+                            }
                         }
                     )
                 }
@@ -2236,6 +2241,9 @@ fun HealthRemindersSettings() {
                             postureEnabled = enabled
                             PreferencesHelper.setPostureReminderEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
+                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                                syncManager.uploadSettings()
+                            }
                         }
                     )
                 }
@@ -2278,6 +2286,9 @@ fun HealthRemindersSettings() {
                             stretchEnabled = enabled
                             PreferencesHelper.setStretchReminderEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
+                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                                syncManager.uploadSettings()
+                            }
                         }
                     )
                 }
@@ -2320,6 +2331,9 @@ fun HealthRemindersSettings() {
                             brightnessEnabled = enabled
                             PreferencesHelper.setBrightnessCheckEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
+                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                                syncManager.uploadSettings()
+                            }
                         }
                     )
                 }
@@ -2362,11 +2376,254 @@ fun HealthRemindersSettings() {
                             combinedEnabled = enabled
                             PreferencesHelper.setCombinedNotificationsEnabled(context, enabled)
                             HealthReminderWorker.scheduleHealthReminders(context)
+                            kotlinx.coroutines.launch(scope.coroutineContext) {
+                                syncManager.uploadSettings()
+                            }
                         }
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+fun MultiDeviceSyncSettings() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val syncManager = remember { SyncManager.getInstance(context) }
+    
+    var isSignedIn by remember { mutableStateOf(syncManager.isSignedIn()) }
+    var userEmail by remember { mutableStateOf(syncManager.getCurrentUserEmail()) }
+    var syncEnabled by remember { mutableStateOf(syncManager.isSyncEnabled()) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
+    var isSyncing by remember { mutableStateOf(false) }
+    
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Sync Status Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSignedIn && syncEnabled) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isSignedIn) "✓ Signed In" else "☁️ Cloud Sync",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (isSignedIn) {
+                                userEmail ?: "Unknown"
+                            } else {
+                                "Sign in to sync across devices"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    if (isSignedIn) {
+                        IconButton(
+                            onClick = { showSignOutDialog = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Sign Out"
+                            )
+                        }
+                    }
+                }
+                
+                if (!isSignedIn) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            Toast.makeText(
+                                context,
+                                "Google Sign-In requires google-services.json configuration. Please add your Firebase project configuration.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign in with Google")
+                    }
+                }
+            }
+        }
+        
+        // Sync Features Card (only show when signed in)
+        if (isSignedIn) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Enable Sync Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Enable Sync",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Automatically sync data across devices",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = syncEnabled,
+                            onCheckedChange = { enabled ->
+                                syncEnabled = enabled
+                                syncManager.setSyncEnabled(enabled)
+                                if (enabled) {
+                                    Toast.makeText(context, "Sync enabled", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                    }
+                    
+                    if (syncEnabled) {
+                        HorizontalDivider()
+                        
+                        // What's Synced
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "What's synced:",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            SyncFeatureItem("⚙️", "All Settings")
+                            SyncFeatureItem("📊", "Statistics & Streaks")
+                            SyncFeatureItem("🏆", "Achievements")
+                            SyncFeatureItem("⏸️", "Timer State (pause/resume)")
+                        }
+                        
+                        HorizontalDivider()
+                        
+                        // Manual Sync Button
+                        OutlinedButton(
+                            onClick = {
+                                kotlinx.coroutines.launch(scope.coroutineContext) {
+                                    isSyncing = true
+                                    syncManager.uploadAllData()
+                                    delay(1000)
+                                    isSyncing = false
+                                    Toast.makeText(context, "Sync complete", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isSyncing
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Syncing...")
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sync Now")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Sign Out Confirmation Dialog
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Logout,
+                    contentDescription = null
+                )
+            },
+            title = { Text("Sign Out?") },
+            text = { Text("Your data will remain on this device, but will stop syncing across devices.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        kotlinx.coroutines.launch(scope.coroutineContext) {
+                            syncManager.signOut()
+                            isSignedIn = false
+                            userEmail = null
+                            syncEnabled = false
+                            Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
+                        }
+                        showSignOutDialog = false
+                    }
+                ) {
+                    Text("Sign Out")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun SyncFeatureItem(icon: String, text: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = icon, fontSize = 16.sp)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -2531,6 +2788,14 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         )
         
         HealthRemindersSettings()
+        
+        Text(
+            text = "☁️ Multi-Device Sync",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        
+        MultiDeviceSyncSettings()
         
         Text(
             text = "🔔 Notification Settings",

@@ -108,12 +108,30 @@ class TimerNotificationService : Service() {
             }
             PreferencesHelper.setPauseUntil(context, 0)
             PreferencesHelper.setPausedRemainingTime(context, 0)
+            
+            // Sync timer state (resumed)
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                SyncManager.getInstance(context).uploadTimerState(
+                    isPaused = false,
+                    remainingTimeMillis = PreferencesHelper.getTimeRemainingMillis(context),
+                    lastNotificationTime = PreferencesHelper.getLastNotificationTime(context)
+                )
+            }
         } else {
             // Pause - save current remaining time
             val timeRemaining = PreferencesHelper.getTimeRemainingMillis(context)
             PreferencesHelper.setPausedRemainingTime(context, timeRemaining)
             val pauseUntil = System.currentTimeMillis() + (24 * 60 * 60 * 1000L) // 24 hours
             PreferencesHelper.setPauseUntil(context, pauseUntil)
+            
+            // Sync timer state (paused)
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                SyncManager.getInstance(context).uploadTimerState(
+                    isPaused = true,
+                    remainingTimeMillis = timeRemaining,
+                    lastNotificationTime = PreferencesHelper.getLastNotificationTime(context)
+                )
+            }
         }
         
         updateNotification()
@@ -152,8 +170,18 @@ class TimerNotificationService : Service() {
             if (currentTime - lastBreakTime > 30000) {
                 PreferencesHelper.recordBreakCompleted(context)
                 
+                // Sync statistics to Firebase
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    SyncManager.getInstance(context).uploadStatistics()
+                }
+                
                 // Check for newly unlocked achievements
                 checkAndNotifyAchievements(context)
+                
+                // Sync achievements to Firebase
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    SyncManager.getInstance(context).uploadAchievements()
+                }
                 
                 context.getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
                     .edit()

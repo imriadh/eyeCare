@@ -20,6 +20,7 @@ object PreferencesHelper {
     private const val KEY_LAST_NOTIFICATION_TIME = "last_notification_time"
     private const val KEY_PAUSE_UNTIL = "pause_until"
     private const val KEY_SOUND_ENABLED = "sound_enabled"
+    private const val KEY_VIBRATION_ENABLED = "vibration_enabled"
     private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
     private const val KEY_PAUSED_REMAINING_TIME = "paused_remaining_time"
     private const val KEY_NON_DISMISSIBLE = "non_dismissible_notification"
@@ -123,6 +124,15 @@ object PreferencesHelper {
     
     fun setSoundEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_SOUND_ENABLED, enabled).apply()
+    }
+    
+    // Vibration Enabled
+    fun isVibrationEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_VIBRATION_ENABLED, true)
+    }
+    
+    fun setVibrationEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_VIBRATION_ENABLED, enabled).apply()
     }
     
     // Reminders Enabled
