@@ -1271,50 +1271,56 @@ fun EyeCareHomeScreen(
                 enabled = remindersEnabled,
                 isPaused = isPaused,
                 onTogglePause = {
-                    if (remindersEnabled) {
-                        if (isPaused) {
-                            // Resume with preserved remaining time
-                            val savedRemainingTime = PreferencesHelper.getPausedRemainingTime(context)
-                            if (savedRemainingTime > 0) {
-                                val intervalMillis = PreferencesHelper.getReminderInterval(context) * 60 * 1000L
-                                val newLastNotificationTime = System.currentTimeMillis() - (intervalMillis - savedRemainingTime)
-                                PreferencesHelper.setLastNotificationTime(context, newLastNotificationTime)
-                            } else {
-                                PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
-                            }
-                            PreferencesHelper.setPauseUntil(context, 0)
-                            PreferencesHelper.setPausedRemainingTime(context, 0)
-                            isPaused = false
-                            // Restart notification service
-                            TimerNotificationService.stopService(context)
-                            TimerNotificationService.startService(context)
-                            // Update widgets
-                            EyeCareWidgetProvider.updateAllWidgets(context)
-                        } else {
-                            // Pause - save current remaining time
-                            PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
-                            val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L)
-                            PreferencesHelper.setPauseUntil(context, pauseUntil)
-                            isPaused = true
-                            // Update widgets
-                            EyeCareWidgetProvider.updateAllWidgets(context)
-                        }
-                    }
-                },
-                onStop = {
-                    if (remindersEnabled) {
-                        // Stop completely - reset timer to full interval
+                    // Auto-enable reminders if user clicks start
+                    if (!remindersEnabled) {
+                        remindersEnabled = true
+                        PreferencesHelper.setRemindersEnabled(context, true)
                         PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        TimerNotificationService.startService(context)
+                        EyeCareWidgetProvider.updateAllWidgets(context)
+                        Toast.makeText(context, "👁️ Eye care timer started!", Toast.LENGTH_SHORT).show()
+                    } else if (isPaused) {
+                        // Resume with preserved remaining time
+                        val savedRemainingTime = PreferencesHelper.getPausedRemainingTime(context)
+                        if (savedRemainingTime > 0) {
+                            val intervalMillis = PreferencesHelper.getReminderInterval(context) * 60 * 1000L
+                            val newLastNotificationTime = System.currentTimeMillis() - (intervalMillis - savedRemainingTime)
+                            PreferencesHelper.setLastNotificationTime(context, newLastNotificationTime)
+                        } else {
+                            PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                        }
                         PreferencesHelper.setPauseUntil(context, 0)
                         PreferencesHelper.setPausedRemainingTime(context, 0)
                         isPaused = false
-                        timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
                         // Restart notification service
                         TimerNotificationService.stopService(context)
                         TimerNotificationService.startService(context)
                         // Update widgets
                         EyeCareWidgetProvider.updateAllWidgets(context)
+                    } else {
+                        // Pause - save current remaining time
+                        PreferencesHelper.setPausedRemainingTime(context, timeRemainingMillis)
+                        val pauseUntil = System.currentTimeMillis() + (1 * 60 * 60 * 1000L)
+                        PreferencesHelper.setPauseUntil(context, pauseUntil)
+                        isPaused = true
+                        // Update widgets
+                        EyeCareWidgetProvider.updateAllWidgets(context)
                     }
+                },
+                onStop = {
+                    // Stop completely - reset timer to full interval
+                    PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                    PreferencesHelper.setPauseUntil(context, 0)
+                    PreferencesHelper.setPausedRemainingTime(context, 0)
+                    isPaused = false
+                    timeRemainingMillis = PreferencesHelper.getTimeRemainingMillis(context)
+                    // Restart notification service if enabled
+                    if (remindersEnabled) {
+                        TimerNotificationService.stopService(context)
+                        TimerNotificationService.startService(context)
+                    }
+                    // Update widgets
+                    EyeCareWidgetProvider.updateAllWidgets(context)
                 },
                 onClose = {
                     // Fully disable reminders
@@ -2952,22 +2958,55 @@ fun NotificationManagementSettings() {
                     .clickable {
                         // Play notification sound
                         try {
-                            val notification = android.app.Notification.Builder(context, "eye_care_timer")
+                            // Create a temporary notification channel with sound enabled
+                            val testChannelId = "eye_care_sound_test"
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_sound)
+                                val audioAttributes = android.media.AudioAttributes.Builder()
+                                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                                    .build()
+                                
+                                val testChannel = android.app.NotificationChannel(
+                                    testChannelId,
+                                    "Sound Test",
+                                    android.app.NotificationManager.IMPORTANCE_HIGH
+                                ).apply {
+                                    description = "Test notification sound"
+                                    enableVibration(true)
+                                    setSound(soundUri, audioAttributes)
+                                }
+                                
+                                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                                notificationManager.createNotificationChannel(testChannel)
+                            }
+                            
+                            // Build notification with sound
+                            val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_sound)
+                            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                android.app.Notification.Builder(context, testChannelId)
+                            } else {
+                                android.app.Notification.Builder(context)
+                            }
                                 .setSmallIcon(R.mipmap.ic_launcher)
-                                .setContentTitle("Sound Preview")
+                                .setContentTitle("🔔 Sound Test")
+                                .setContentText("This is how your notification sounds")
+                                .setSound(soundUri)
+                                .setVibrate(longArrayOf(0, 300, 200, 300))
+                                .setAutoCancel(true)
                                 .build()
                             
                             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
                             notificationManager.notify(9999, notification)
                             
-                            // Cancel the preview notification after a moment
+                            // Cancel the preview notification after 3 seconds
                             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                 notificationManager.cancel(9999)
-                            }, 1000)
+                            }, 3000)
                             
-                            Toast.makeText(context, "🔔 Sound preview played", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "🔔 Playing notification sound", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Sound preview not available", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                     .padding(20.dp),
@@ -4152,6 +4191,102 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             }
         }
         
+        // Test Notification Sound
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    // Play notification sound
+                    try {
+                        // Create a temporary notification channel with sound enabled
+                        val testChannelId = "eye_care_sound_test"
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_sound)
+                            val audioAttributes = android.media.AudioAttributes.Builder()
+                                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                                .build()
+                            
+                            val testChannel = android.app.NotificationChannel(
+                                testChannelId,
+                                "Sound Test",
+                                android.app.NotificationManager.IMPORTANCE_HIGH
+                            ).apply {
+                                description = "Test notification sound"
+                                enableVibration(true)
+                                setSound(soundUri, audioAttributes)
+                            }
+                            
+                            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                            notificationManager.createNotificationChannel(testChannel)
+                        }
+                        
+                        // Build notification with sound
+                        val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_sound)
+                        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            android.app.Notification.Builder(context, testChannelId)
+                        } else {
+                            android.app.Notification.Builder(context)
+                        }
+                            .setSmallIcon(R.mipmap.ic_launcher)
+                            .setContentTitle("🔔 Sound Test")
+                            .setContentText("This is how your notification sounds")
+                            .setSound(soundUri)
+                            .setVibrate(longArrayOf(0, 300, 200, 300))
+                            .setAutoCancel(true)
+                            .build()
+                        
+                        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                        notificationManager.notify(9999, notification)
+                        
+                        // Cancel the preview notification after 3 seconds
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            notificationManager.cancel(9999)
+                        }, 3000)
+                        
+                        Toast.makeText(context, "🔔 Playing notification sound", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "🔊", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Test Notification Sound",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Preview your notification sound",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        
         // ⏰ TIMER SETTINGS SECTION
         SettingsSectionHeader("⏰", "Timer Settings")
         
@@ -4240,64 +4375,13 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             }
         }
         
-        // Smart Breaks Toggle
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = if (smartBreaksEnabled) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = if (smartBreaksEnabled) {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        } else {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(text = "🧠", fontSize = 22.sp)
-                        }
-                    }
-                    Column {
-                        Text(
-                            text = "Smart Breaks",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "Auto-pause during quiet hours",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Switch(
-                    checked = smartBreaksEnabled,
-                    onCheckedChange = {
-                        smartBreaksEnabled = it
-                        PreferencesHelper.setSmartBreaksEnabled(context, it)
-                    }
-                )
-            }
-        }
+        // 🧠 SMART BREAKS SECTION  
+        SettingsSectionHeader("🧠", "Smart Breaks")
+        
+        SmartBreaksSettings()
+        
+        // Detailed Break Rules Settings
+        BreakRulesSettings()
         
         // 📊 STATS & DATA SECTION
         SettingsSectionHeader("📊", "Stats & Data")
@@ -4449,7 +4533,12 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         
         AppearanceSettings()
         
-        // 🌙 SLEEP SECTION
+        // � HEALTH & WELLNESS SECTION
+        SettingsSectionHeader("🏥", "Health & Wellness")
+        
+        HealthRemindersSettings()
+        
+        // �🌙 SLEEP SECTION
         SettingsSectionHeader("🌙", "Sleep")
         
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -4476,6 +4565,11 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 )
             }
         }
+        
+        // ☁️ MULTI-DEVICE SYNC SECTION
+        SettingsSectionHeader("☁️", "Multi-Device Sync")
+        
+        MultiDeviceSyncSettings()
         
         // ℹ️ ABOUT SECTION
         SettingsSectionHeader("ℹ️", "About")
@@ -5366,25 +5460,27 @@ fun CountdownTimerCard(
                         
                         // Status text
                         Text(
-                            text = if (!enabled) "Tap to start"
+                            text = if (!enabled) "Tap ▶ to start"
                                    else if (isPaused) "Paused" 
                                    else "Running",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontSize = 12.sp
+                            color = if (!enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            fontSize = 13.sp,
+                            fontWeight = if (!enabled) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
                 }
                 
                 // Bottom info text
                 Text(
-                    text = if (!enabled) "Start your eye care timer"
+                    text = if (!enabled) "👁️ Press play to begin your eye care routine"
                            else if (isPaused) "Timer is paused • Press ▶ to resume" 
                            else "Take breaks every ${PreferencesHelper.getReminderInterval(LocalContext.current)} min",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    color = if (!enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp)
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    fontWeight = if (!enabled) FontWeight.Medium else FontWeight.Normal
                 )
             }
         }

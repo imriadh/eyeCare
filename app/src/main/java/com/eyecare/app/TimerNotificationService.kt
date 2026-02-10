@@ -376,6 +376,12 @@ class TimerNotificationService : Service() {
         // Create a separate notification channel for eye care reminders
         val reminderChannelId = "eye_care_reminder_alerts"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_sound)
+            val audioAttributes = android.media.AudioAttributes.Builder()
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                .build()
+            
             val channel = NotificationChannel(
                 reminderChannelId,
                 "Eye Care Reminders",
@@ -384,21 +390,20 @@ class TimerNotificationService : Service() {
                 description = "Alerts when it's time to rest your eyes"
                 enableVibration(true)
                 setShowBadge(true)
-                // Use default sound
+                setSound(soundUri, audioAttributes)
             }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
         
-        // Intent to open exercises screen
-        val openExercisesIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("open_exercises", true)
+        // Intent to just open the app (no auto-start behavior)
+        val openAppIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        val openExercisesPendingIntent = PendingIntent.getActivity(
+        val openAppPendingIntent = PendingIntent.getActivity(
             context,
             100,
-            openExercisesIntent,
+            openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
@@ -406,18 +411,23 @@ class TimerNotificationService : Service() {
         val soundEnabled = PreferencesHelper.isSoundEnabled(context)
         val vibrationEnabled = PreferencesHelper.isVibrationEnabled(context)
         
+        val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_sound)
+        
         val builder = NotificationCompat.Builder(context, reminderChannelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("👁️ Time for Eye Care!")
             .setContentText("Take a 20-second break to rest your eyes")
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("Look at something 20 feet away for 20 seconds.\n\nTap here for guided eye exercises! 👁️"))
+                .bigText("Look at something 20 feet away for 20 seconds.\n\nTap to open app or swipe to dismiss."))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
-            .setContentIntent(openExercisesPendingIntent)
+            .setOngoing(false)
+            .setContentIntent(openAppPendingIntent)
         
-        if (!soundEnabled) {
+        if (soundEnabled) {
+            builder.setSound(soundUri)
+        } else {
             builder.setSound(null)
         }
         
