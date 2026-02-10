@@ -54,6 +54,17 @@
             android:enabled="true"
             android:exported="false" />
         
+        <!-- Notification Dismiss Receiver -->
+        <receiver
+            android:name=".NotificationDismissReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.eyecare.app.ACTION_DISMISS" />
+                <action android:name="com.eyecare.app.ACTION_UNDO_DISMISS" />
+            </intent-filter>
+        </receiver>
+        
         <!-- WorkManager Worker -->
         <provider
             android:name="androidx.startup.InitializationProvider"

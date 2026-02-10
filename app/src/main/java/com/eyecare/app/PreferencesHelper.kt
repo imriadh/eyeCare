@@ -22,6 +22,8 @@ object PreferencesHelper {
     private const val KEY_SOUND_ENABLED = "sound_enabled"
     private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
     private const val KEY_PAUSED_REMAINING_TIME = "paused_remaining_time"
+    private const val KEY_NON_DISMISSIBLE = "non_dismissible_notification"
+    private const val KEY_LAST_DISMISSED_TIME = "last_dismissed_time"
     
     // Statistics Keys
     private const val KEY_TOTAL_BREAKS = "total_breaks"
@@ -118,6 +120,24 @@ object PreferencesHelper {
     
     fun setRemindersEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_REMINDERS_ENABLED, enabled).apply()
+    }
+    
+    // Non-Dismissible Notification
+    fun isNonDismissible(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_NON_DISMISSIBLE, false)
+    }
+    
+    fun setNonDismissible(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_NON_DISMISSIBLE, enabled).apply()
+    }
+    
+    // Last Dismissed Time (for undo functionality)
+    fun getLastDismissedTime(context: Context): Long {
+        return getPrefs(context).getLong(KEY_LAST_DISMISSED_TIME, 0L)
+    }
+    
+    fun setLastDismissedTime(context: Context, timeMillis: Long) {
+        getPrefs(context).edit().putLong(KEY_LAST_DISMISSED_TIME, timeMillis).apply()
     }
     
     // Calculate time remaining until next break

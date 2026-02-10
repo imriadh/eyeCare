@@ -232,10 +232,10 @@ class TimerNotificationService : Service() {
         )
         
         // Delete intent (when user swipes notification away)
-        val deleteIntent = Intent(context, TimerNotificationService::class.java).apply {
-            action = ACTION_STOP
+        val deleteIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+            action = NotificationDismissReceiver.ACTION_DISMISS
         }
-        val deletePendingIntent = PendingIntent.getService(
+        val deletePendingIntent = PendingIntent.getBroadcast(
             context,
             4,
             deleteIntent,
@@ -243,16 +243,17 @@ class TimerNotificationService : Service() {
         )
 
         val pauseResumeText = if (isPaused) "▶️ Resume" else "⏸️ Pause"
+        val isNonDismissible = PreferencesHelper.isNonDismissible(context)
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(timerText)
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setOngoing(false)
+            .setOngoing(isNonDismissible)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openAppPendingIntent)
-            .setDeleteIntent(deletePendingIntent)
+            .setDeleteIntent(if (isNonDismissible) null else deletePendingIntent)
             .addAction(
                 android.R.drawable.ic_media_pause,
                 pauseResumeText,

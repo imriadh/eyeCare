@@ -42,6 +42,8 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 import android.provider.AlarmClock
+import android.widget.Toast
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 
 /**
  * MainActivity - Enhanced Eye Care App
@@ -1715,6 +1717,188 @@ fun formatHour(hour: Int): String {
 }
 
 @Composable
+fun NotificationManagementSettings() {
+    val context = LocalContext.current
+    var nonDismissible by remember { mutableStateOf(PreferencesHelper.isNonDismissible(context)) }
+    var showCloseConfirmDialog by remember { mutableStateOf(false) }
+    
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Non-Dismissible Notification Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (nonDismissible) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "🔒", fontSize = 28.sp)
+                    Column {
+                        Text(
+                            text = "Non-Dismissible",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Prevent accidental notification swipe",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = nonDismissible,
+                    onCheckedChange = {
+                        nonDismissible = it
+                        PreferencesHelper.setNonDismissible(context, it)
+                        // Restart service to apply changes
+                        if (PreferencesHelper.areRemindersEnabled(context)) {
+                            TimerNotificationService.stopService(context)
+                            TimerNotificationService.startService(context)
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Sound Preview Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        // Play notification sound
+                        try {
+                            val notification = android.app.Notification.Builder(context, "eye_care_timer")
+                                .setSmallIcon(R.mipmap.ic_launcher)
+                                .setContentTitle("Sound Preview")
+                                .build()
+                            
+                            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                            notificationManager.notify(9999, notification)
+                            
+                            // Cancel the preview notification after a moment
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                notificationManager.cancel(9999)
+                            }, 1000)
+                            
+                            Toast.makeText(context, "🔔 Sound preview played", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Sound preview not available", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "🔊", fontSize = 28.sp)
+                    Column {
+                        Text(
+                            text = "Test Notification Sound",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Preview your notification sound",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Streak Protection Info Card
+        val currentStreak = PreferencesHelper.getCurrentStreak(context)
+        if (currentStreak > 3) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "🔥", fontSize = 28.sp)
+                    Column {
+                        Text(
+                            text = "Streak Protection Active",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = "Your $currentStreak-day streak is protected! Closing notification requires confirmation.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Close Confirmation Dialog
+        if (showCloseConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showCloseConfirmDialog = false },
+                title = { Text("⚠️ Close Reminders?") },
+                text = {
+                    Text("You have a ${currentStreak}-day streak! Are you sure you want to close the notification and stop reminders?")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            // Actually close
+                            PreferencesHelper.setRemindersEnabled(context, false)
+                            TimerNotificationService.stopService(context)
+                            showCloseConfirmDialog = false
+                            Toast.makeText(context, "Reminders stopped", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text("Yes, Close")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showCloseConfirmDialog = false }) {
+                        Text("Keep Streak!")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
 fun SettingsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     
@@ -1854,6 +2038,14 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         )
         
         SmartBreaksSettings()
+        
+        Text(
+            text = "🔔 Notification Settings",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        
+        NotificationManagementSettings()
         
         Text(
             text = "⚙️ Quick Actions",
