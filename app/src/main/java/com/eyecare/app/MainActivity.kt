@@ -1193,7 +1193,10 @@ fun MainScreen(
             )
             1 -> SleepCycleScreen(paddingValues = paddingValues)
             2 -> StatsScreen(paddingValues = paddingValues)
-            3 -> SettingsScreen(paddingValues = paddingValues)
+            3 -> SettingsScreen(
+                paddingValues = paddingValues,
+                onNavigateToStats = { selectedTab = 2 }
+            )
         }
     }
 }
@@ -2443,22 +2446,27 @@ fun AppearanceSettings() {
                 ThemeChip("System", "system", themeMode) { 
                     themeMode = it
                     PreferencesHelper.setThemeMode(context, it)
+                    (context as? MainActivity)?.recreate()
                 }
                 ThemeChip("Light", "light", themeMode) { 
                     themeMode = it
                     PreferencesHelper.setThemeMode(context, it)
+                    (context as? MainActivity)?.recreate()
                 }
                 ThemeChip("Dark", "dark", themeMode) { 
                     themeMode = it
                     PreferencesHelper.setThemeMode(context, it)
+                    (context as? MainActivity)?.recreate()
                 }
                 ThemeChip("AMOLED", "amoled", themeMode) { 
                     themeMode = it
                     PreferencesHelper.setThemeMode(context, it)
+                    (context as? MainActivity)?.recreate()
                 }
                 ThemeChip("Auto", "auto", themeMode) { 
                     themeMode = it
                     PreferencesHelper.setThemeMode(context, it)
+                    (context as? MainActivity)?.recreate()
                 }
             }
             
@@ -3540,11 +3548,19 @@ fun MultiDeviceSyncSettings() {
     val scope = rememberCoroutineScope()
     val syncManager = remember { SyncManager.getInstance(context) }
     
-    var isSignedIn by remember { mutableStateOf(syncManager.isSignedIn()) }
-    var userEmail by remember { mutableStateOf(syncManager.getCurrentUserEmail()) }
+    var isSignedIn by remember { mutableStateOf(PreferencesHelper.isUserSignedIn(context)) }
+    var userEmail by remember { mutableStateOf(PreferencesHelper.getUserEmail(context)) }
+    var userName by remember { mutableStateOf(PreferencesHelper.getUserName(context)) }
     var syncEnabled by remember { mutableStateOf(syncManager.isSyncEnabled()) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
+    
+    // Update sign-in state when it changes
+    LaunchedEffect(Unit) {
+        isSignedIn = PreferencesHelper.isUserSignedIn(context)
+        userEmail = PreferencesHelper.getUserEmail(context)
+        userName = PreferencesHelper.getUserName(context)
+    }
     
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -3578,9 +3594,9 @@ fun MultiDeviceSyncSettings() {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = if (isSignedIn) {
-                                userEmail ?: "Unknown"
+                                userName ?: userEmail ?: "Unknown"
                             } else {
-                                "Sign in to sync across devices"
+                                "Sign in with Google to sync across devices"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -3589,7 +3605,13 @@ fun MultiDeviceSyncSettings() {
                     
                     if (isSignedIn) {
                         IconButton(
-                            onClick = { showSignOutDialog = true }
+                            onClick = {
+                                PreferencesHelper.signOutUser(context)
+                                isSignedIn = false
+                                userEmail = null
+                                userName = null
+                                Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
+                            }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ExitToApp,
@@ -3795,9 +3817,12 @@ fun SettingsSectionHeader(icon: String, title: String) {
 }
 
 @Composable
-fun SettingsScreen(paddingValues: PaddingValues) {
+fun SettingsScreen(
+    paddingValues: PaddingValues,
+    onNavigateToStats: () -> Unit = {}
+) {
     val context = LocalContext.current
-    val isSignedIn = remember { mutableStateOf(PreferencesHelper.isUserSignedIn(context)) }
+    var isSignedIn by remember { mutableStateOf(PreferencesHelper.isUserSignedIn(context)) }
     val userName = remember { mutableStateOf(PreferencesHelper.getUserName(context)) }
     val userEmail = remember { mutableStateOf(PreferencesHelper.getUserEmail(context)) }
     val userPhotoUrl = remember { mutableStateOf(PreferencesHelper.getUserPhotoUrl(context)) }
@@ -3827,7 +3852,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // User Profile Card (shown when signed in)
-        if (isSignedIn.value) {
+        if (isSignedIn) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -3937,7 +3962,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                     TextButton(
                         onClick = {
                             PreferencesHelper.signOutUser(context)
-                            isSignedIn.value = false
+                            isSignedIn = false
                             Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
                             showSignOutDialog = false
                         }
@@ -4390,8 +4415,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    // Navigate to stats screen
-                    Toast.makeText(context, "Navigate to Statistics tab", Toast.LENGTH_SHORT).show()
+                    onNavigateToStats()
                 }
         ) {
             Row(
@@ -4421,7 +4445,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "See your progress",
+                            text = "See your progress & achievements",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -4756,7 +4780,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 TextButton(
                     onClick = {
                         PreferencesHelper.signOutUser(context)
-                        isSignedIn.value = false
+                        isSignedIn = false
                         Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
                         showSignOutDialog = false
                     }
