@@ -3997,119 +3997,167 @@ fun CountdownTimerCard(
     val minutes = (timeRemainingMillis / 1000 / 60).toInt()
     val seconds = ((timeRemainingMillis / 1000) % 60).toInt()
     val totalSeconds = (timeRemainingMillis / 1000).toFloat()
-    val intervalSeconds = PreferencesHelper.DEFAULT_REMINDER_INTERVAL * 60f
-    val progress = 1f - (totalSeconds / intervalSeconds)
+    val context = LocalContext.current
+    val intervalSeconds = PreferencesHelper.getReminderInterval(context) * 60f
+    val progress = if (enabled) 1f - (totalSeconds / intervalSeconds) else 0f
     
-    ElevatedCard(
+    // Animated progress
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "progress"
+    )
+    
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                enabled = enabled,
-                onClick = { onTogglePause() },
-                onLongClick = { onStop() }
-            ),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (enabled) {
-                if (isPaused) MaterialTheme.colorScheme.tertiaryContainer
-                else MaterialTheme.colorScheme.primaryContainer
-            } else MaterialTheme.colorScheme.surfaceVariant
-        )
+            .height(420.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = if (isPaused) "⏸️ Paused" else "⏰ Next Break",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
-                           else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (enabled) {
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close reminders",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = if (!enabled) "Ready to Focus"
+                                   else if (isPaused) "Paused" 
+                                   else "Focus Time",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (!enabled) "Start your eye care routine"
+                                   else if (isPaused) "Timer paused" 
+                                   else "Next break in",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
+                    if (enabled) {
+                        FilledIconButton(
+                            onClick = onClose,
+                            modifier = Modifier.size(40.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
-            }
-            
-            // Circular progress indicator
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(200.dp)
-            ) {
-                CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxSize(),
-                    strokeWidth = 12.dp,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    color = if (enabled) {
-                        if (isPaused) MaterialTheme.colorScheme.tertiary
-                        else MaterialTheme.colorScheme.primary
-                    } else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                )
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                
+                // Timer Circle
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(240.dp)
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = String.format("%02d:%02d", minutes, seconds),
-                        style = MaterialTheme.typography.displayLarge,
-                        fontWeight = FontWeight.Bold,
+                    // Background circle
+                    CircularProgressIndicator(
+                        progress = { 1f },
+                        modifier = Modifier.fillMaxSize(),
+                        strokeWidth = 16.dp,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    // Animated progress circle
+                    CircularProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxSize(),
+                        strokeWidth = 16.dp,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f),
                         color = if (enabled) {
                             if (isPaused) MaterialTheme.colorScheme.tertiary
                             else MaterialTheme.colorScheme.primary
-                        } else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 48.sp
+                        } else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        strokeCap = StrokeCap.Round
                     )
-                    Text(
-                        text = "remaining",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
-                               else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Timer text
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = String.format("%02d:%02d", minutes, seconds),
+                            style = MaterialTheme.typography.displayLarge,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 56.sp,
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (enabled && !isPaused) "minutes" else "",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
-            }
-            
-            if (enabled) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                
+                // Control Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                 ) {
-                    Text(
-                        text = if (isPaused) "▶️ Tap to resume" else "⏸️ Tap to pause",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "🔄 Long press to stop & reset",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center
-                    )
+                    if (enabled) {
+                        // Reset button
+                        FilledTonalIconButton(
+                            onClick = onStop,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reset",
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        
+                        // Play/Pause button (larger, primary)
+                        FilledIconButton(
+                            onClick = onTogglePause,
+                            modifier = Modifier.size(72.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = if (isPaused) 
+                                    MaterialTheme.colorScheme.tertiary 
+                                else 
+                                    MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Settings,
+                                contentDescription = if (isPaused) "Resume" else "Pause",
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "👁️",
+                            fontSize = 48.sp
+                        )
+                    }
                 }
-            } else {
-                Text(
-                    text = "Enable reminders to start",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }
@@ -4176,135 +4224,184 @@ fun RemindersCard(
     onRequestPermission: () -> Unit,
     isPaused: Boolean
 ) {
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 8.dp else 2.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        // Main Control Card
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = if (enabled) 
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else 
+                    MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = if (enabled) 4.dp else 0.dp
+            )
         ) {
-            // Header with icon and title
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                    modifier = Modifier.size(48.dp)
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    color = if (enabled)
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = MaterialTheme.shapes.medium
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "👁️",
+                                fontSize = 24.sp
+                            )
+                        }
+                        
+                        Column {
+                            Text(
+                                text = "Eye Care Timer",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (enabled) "Active" else "Inactive",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (enabled) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    // Modern Toggle Button
+                    FilledTonalButton(
+                        onClick = { onToggle(!enabled) },
+                        enabled = hasPermission,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (enabled) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (enabled)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Icon(
+                            imageVector = if (enabled) Icons.Default.Check else Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "⏰",
-                            fontSize = 28.sp
+                            text = if (enabled) "ON" else "OFF",
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "20-20-20 Rule",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (enabled) "Protecting your eyes ✓" else "Start eye care reminders",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = onToggle,
-                    enabled = hasPermission
-                )
-            }
             
-            if (!hasPermission) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.errorContainer
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                if (!hasPermission) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "⚠️",
-                                fontSize = 20.sp
+                                text = "Permission Needed",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Notification Permission Required",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
+                                text = "Enable notifications to get reminders",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
-                        Text(
-                            text = "Allow notifications to receive eye care reminders",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        FilledTonalButton(
+                        FilledTonalIconButton(
                             onClick = onRequestPermission,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.filledTonalButtonColors(
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Grant",
+                                tint = MaterialTheme.colorScheme.onError
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Grant Permission")
                         }
                     }
                 }
-            }
             
-            if (enabled) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                
-                // Interval Slider with better styling
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                ) {
+                if (enabled) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    
+                    // Interval Settings
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Reminder Interval",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Break Interval",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                             Surface(
                                 shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                shadowElevation = 2.dp
                             ) {
                                 Text(
                                     text = "$interval min",
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary
@@ -4336,18 +4433,15 @@ fun RemindersCard(
                             )
                         }
                     }
-                }
                 
-                // Sound Toggle with better styling
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                ) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    
+                    // Sound Toggle
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .clickable { onSoundToggle(!soundEnabled) }
+                            .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
