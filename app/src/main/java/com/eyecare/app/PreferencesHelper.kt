@@ -23,6 +23,7 @@ object PreferencesHelper {
     private const val KEY_VIBRATION_ENABLED = "vibration_enabled"
     private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
     private const val KEY_PAUSED_REMAINING_TIME = "paused_remaining_time"
+    private const val KEY_TIMER_COMPLETED = "timer_completed"
     private const val KEY_NON_DISMISSIBLE = "non_dismissible_notification"
     private const val KEY_LAST_DISMISSED_TIME = "last_dismissed_time"
     
@@ -118,6 +119,15 @@ object PreferencesHelper {
     
     fun setPausedRemainingTime(context: Context, timeMillis: Long) {
         getPrefs(context).edit().putLong(KEY_PAUSED_REMAINING_TIME, timeMillis).apply()
+    }
+    
+    // Timer Completed
+    fun isTimerCompleted(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_TIMER_COMPLETED, false)
+    }
+    
+    fun setTimerCompleted(context: Context, completed: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_TIMER_COMPLETED, completed).apply()
     }
     
     // Sound Enabled

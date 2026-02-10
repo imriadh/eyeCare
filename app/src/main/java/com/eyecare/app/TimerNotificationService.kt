@@ -25,6 +25,7 @@ class TimerNotificationService : Service() {
         const val ACTION_PAUSE_RESUME = "com.eyecare.app.ACTION_PAUSE_RESUME"
         const val ACTION_RESET = "com.eyecare.app.ACTION_RESET"
         const val ACTION_STOP = "com.eyecare.app.ACTION_STOP"
+        const val ACTION_START_NEXT = "com.eyecare.app.ACTION_START_NEXT"
         
         fun startService(context: Context) {
             val intent = Intent(context, TimerNotificationService::class.java)
@@ -55,6 +56,7 @@ class TimerNotificationService : Service() {
         when (intent?.action) {
             ACTION_PAUSE_RESUME -> handlePauseResume()
             ACTION_RESET -> handleReset()
+            ACTION_START_NEXT -> handleStartNext()
             ACTION_STOP -> {
                 // Fully disable reminders when user closes notification
                 val context = applicationContext
@@ -141,6 +143,17 @@ class TimerNotificationService : Service() {
         val context = applicationContext
         PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
         PreferencesHelper.setPauseUntil(context, 0)
+        PreferencesHelper.setTimerCompleted(context, false)
+        updateNotification()
+    }
+    
+    private fun handleStartNext() {
+        val context = applicationContext
+        PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+        PreferencesHelper.setPauseUntil(context, 0)
+        PreferencesHelper.setPausedRemainingTime(context, 0)
+        PreferencesHelper.setTimerCompleted(context, false)
+        startTimerUpdates()
         updateNotification()
     }
 
@@ -159,7 +172,7 @@ class TimerNotificationService : Service() {
         }
         
         // Track break completion when timer reaches 0
-        if (timeRemaining <= 1000 && !PreferencesHelper.isPaused(context)) {
+        if (timeRemaining <= 1000 && !PreferencesHelper.isPaused(context) && !PreferencesHelper.isTimerCompleted(context)) {
             // Check if we haven't already recorded this break
             val lastBreakTime = context.getSharedPreferences("eye_care_prefs", Context.MODE_PRIVATE)
                 .getLong("last_break_recorded_time", 0L)
@@ -187,6 +200,10 @@ class TimerNotificationService : Service() {
                     .edit()
                     .putLong("last_break_recorded_time", currentTime)
                     .apply()
+                
+                // Mark timer as completed and stop countdown
+                PreferencesHelper.setTimerCompleted(context, true)
+                serviceJob?.cancel() // Stop the auto-update loop
             }
         }
         
@@ -201,17 +218,22 @@ class TimerNotificationService : Service() {
     private fun createTimerNotification(context: Context): Notification {
         val timeRemaining = PreferencesHelper.getTimeRemainingMillis(context)
         val isPaused = PreferencesHelper.isPaused(context)
+        val isCompleted = PreferencesHelper.isTimerCompleted(context)
         
-        val minutes = (timeRemaining / 1000 / 60).toInt()
-        val seconds = ((timeRemaining / 1000) % 60).toInt()
+        val minutes = (timeRemaining / 1000 / 60).toInt().coerceAtLeast(0)
+        val seconds = ((timeRemaining / 1000) % 60).toInt().coerceAtLeast(0)
         
-        val timerText = if (isPaused) {
+        val timerText = if (isCompleted) {
+            "🎉 Break Complete!"
+        } else if (isPaused) {
             "⏸️ Paused"
         } else {
             String.format("⏰ %02d:%02d", minutes, seconds)
         }
         
-        val contentText = if (isPaused) {
+        val contentText = if (isCompleted) {
+            "Great job! Tap 'Start Next Break' to begin another timer"
+        } else if (isPaused) {
             "Reminders are paused • Tap Resume to continue"
         } else {
             "Next break in ${String.format("%02d:%02d", minutes, seconds)} • Rest your eyes!"
@@ -248,6 +270,17 @@ class TimerNotificationService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
+        // Start Next Break action
+        val startNextIntent = Intent(context, TimerNotificationService::class.java).apply {
+            action = ACTION_START_NEXT
+        }
+        val startNextPendingIntent = PendingIntent.getService(
+            context,
+            5,
+            startNextIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
         // Close action
         val closeIntent = Intent(context, TimerNotificationService::class.java).apply {
             action = ACTION_STOP
@@ -273,32 +306,49 @@ class TimerNotificationService : Service() {
         val pauseResumeText = if (isPaused) "▶️ Resume" else "⏸️ Pause"
         val isNonDismissible = PreferencesHelper.isNonDismissible(context)
 
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(timerText)
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setOngoing(isNonDismissible)
+            .setOngoing(if (isCompleted) false else isNonDismissible)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(if (isCompleted) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openAppPendingIntent)
-            .setDeleteIntent(if (isNonDismissible) null else deletePendingIntent)
-            .addAction(
-                android.R.drawable.ic_media_pause,
-                pauseResumeText,
-                pauseResumePendingIntent
+            .setDeleteIntent(if (isNonDismissible && !isCompleted) null else deletePendingIntent)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+        
+        if (isCompleted) {
+            // Show different actions when timer is completed
+            builder.addAction(
+                android.R.drawable.ic_media_play,
+                "▶️ Start Next Break",
+                startNextPendingIntent
             )
-            .addAction(
-                android.R.drawable.ic_menu_revert,
-                "🔄 Reset",
-                resetPendingIntent
-            )
-            .addAction(
+            builder.addAction(
                 android.R.drawable.ic_delete,
                 "✕ Close",
                 closePendingIntent
             )
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .build()
+        } else {
+            // Show normal actions during countdown
+            builder.addAction(
+                android.R.drawable.ic_media_pause,
+                pauseResumeText,
+                pauseResumePendingIntent
+            )
+            builder.addAction(
+                android.R.drawable.ic_menu_revert,
+                "🔄 Reset",
+                resetPendingIntent
+            )
+            builder.addAction(
+                android.R.drawable.ic_delete,
+                "✕ Close",
+                closePendingIntent
+            )
+        }
+        
+        return builder.build()
     }
 
     private fun createNotificationChannel() {
