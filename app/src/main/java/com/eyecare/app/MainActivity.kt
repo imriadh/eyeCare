@@ -4498,23 +4498,23 @@ fun PauseIcon(modifier: Modifier = Modifier) {
         // Left bar
         drawRoundRect(
             color = androidx.compose.ui.graphics.Color.White,
-            topLeft = androidx.compose.ui.graphics.Offset(
+            topLeft = Offset(
                 x = (size.width - barWidth * 2 - spacing) / 2,
                 y = (size.height - barHeight) / 2
             ),
-            size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+            size = Size(barWidth, barHeight),
+            cornerRadius = CornerRadius(4.dp.toPx())
         )
         
         // Right bar
         drawRoundRect(
             color = androidx.compose.ui.graphics.Color.White,
-            topLeft = androidx.compose.ui.graphics.Offset(
+            topLeft = Offset(
                 x = (size.width - barWidth * 2 - spacing) / 2 + barWidth + spacing,
                 y = (size.height - barHeight) / 2
             ),
-            size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+            size = Size(barWidth, barHeight),
+            cornerRadius = CornerRadius(4.dp.toPx())
         )
     }
 }
