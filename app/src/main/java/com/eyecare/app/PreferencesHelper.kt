@@ -64,6 +64,9 @@ object PreferencesHelper {
     private const val KEY_BRIGHTNESS_CHECK_ENABLED = "brightness_check_enabled"
     private const val KEY_COMBINED_NOTIFICATIONS = "combined_notifications"
     
+    // Onboarding Key
+    private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     const val DEFAULT_BREAK_DURATION = 20 // seconds
@@ -580,5 +583,14 @@ object PreferencesHelper {
         // but this can be made configurable
         
         return true
+    }
+    
+    // Onboarding Completion
+    fun isOnboardingCompleted(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_ONBOARDING_COMPLETED, false)
+    }
+    
+    fun setOnboardingCompleted(context: Context, completed: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
     }
 }

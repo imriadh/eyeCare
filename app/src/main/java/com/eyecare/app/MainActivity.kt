@@ -20,6 +20,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -346,6 +348,499 @@ fun checkAndNotifyAchievements(context: Context) {
     }
 }
 
+/**
+ * Onboarding Screens
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun OnboardingScreen(onComplete: () -> Unit) {
+    val pagerState = rememberPagerState(pageCount = { 3 })
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    
+    var selectedPreset by remember { mutableStateOf("20-20-20") }
+    var workHoursStart by remember { mutableStateOf(8) }
+    var workHoursEnd by remember { mutableStateOf(18) }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> WelcomeScreen()
+                1 -> CustomizeScreen(
+                    selectedPreset = selectedPreset,
+                    onPresetSelected = { selectedPreset = it },
+                    workHoursStart = workHoursStart,
+                    workHoursEnd = workHoursEnd,
+                    onWorkHoursStartChanged = { workHoursStart = it },
+                    onWorkHoursEndChanged = { workHoursEnd = it }
+                )
+                2 -> PermissionsScreen()
+            }
+        }
+        
+        // Bottom buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            if (pagerState.currentPage > 0) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                        }
+                    }
+                ) {
+                    Text("Back")
+                }
+            } else {
+                Spacer(modifier = Modifier.width(1.dp))
+            }
+            
+            Button(
+                onClick = {
+                    if (pagerState.currentPage < 2) {
+                        scope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                        }
+                    } else {
+                        // Save preferences
+                        val preset = getBreakRulePresets().find { it.id == selectedPreset }
+                        if (preset != null) {
+                            PreferencesHelper.setReminderInterval(context, preset.intervalMinutes)
+                            PreferencesHelper.setBreakDuration(context, preset.durationSeconds)
+                            PreferencesHelper.setSelectedPreset(context, selectedPreset)
+                        }
+                        PreferencesHelper.setWorkHoursStart(context, workHoursStart)
+                        PreferencesHelper.setWorkHoursEnd(context, workHoursEnd)
+                        PreferencesHelper.setOnboardingCompleted(context, true)
+                        onComplete()
+                    }
+                }
+            ) {
+                Text(if (pagerState.currentPage < 2) "Next" else "Get Started")
+            }
+        }
+        
+        // Page indicators
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 80.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(3) { index ->
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            color = if (index == pagerState.currentPage) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                            shape = MaterialTheme.shapes.small
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WelcomeScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ){
+        Text(
+            text = "👁️",
+            fontSize = 80.sp
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Welcome to Eye Care!",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Take care of your eyes with the 20-20-20 rule",
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        Spacer(modifier = Modifier.height(40.dp))
+        
+        // 20-20-20 Rule Explanation
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                RuleCard("⏰", "Every 20 Minutes", "Take a break from your screen")
+                HorizontalDivider()
+                RuleCard("👀", "Look 20 Feet Away", "Focus on something distant")
+                HorizontalDivider()
+                RuleCard("⏱️", "For 20 Seconds", "Give your eyes a rest")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Why Eye Care Matters",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FactCard("🔬 Reduces digital eye strain")
+            FactCard("💪 Prevents eye fatigue")
+            FactCard("😌 Improves focus and productivity")
+            FactCard("🌟 Protects long-term eye health")
+        }
+    }
+}
+
+@Composable
+fun CustomizeScreen(
+    selectedPreset: String,
+    onPresetSelected: (String) -> Unit,
+    workHoursStart: Int,
+    workHoursEnd: Int,
+    onWorkHoursStartChanged: (Int) -> Unit,
+    onWorkHoursEndChanged: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "⚙️",
+            fontSize = 60.sp
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Customize Your Experience",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Choose Preset
+        Text(
+            text = "Choose Your Break Interval",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        val presets = getBreakRulePresets()
+        presets.forEach { preset ->
+            OutlinedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onPresetSelected(preset.id) },
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = if (selectedPreset == preset.id) 
+                        MaterialTheme.colorScheme.primaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = preset.icon, fontSize = 32.sp)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = preset.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = preset.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (selectedPreset == preset.id) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Selected",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Work Hours
+        Text(
+            text = "Set Your Work Hours",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Reminders will be active during these hours",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Start:", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = "${workHoursStart}:00",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Slider(
+                    value = workHoursStart.toFloat(),
+                    onValueChange = { onWorkHoursStartChanged(it.toInt()) },
+                    valueRange = 0f..23f,
+                    steps = 22
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("End:", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = "${workHoursEnd}:00",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Slider(
+                    value = workHoursEnd.toFloat(),
+                    onValueChange = { onWorkHoursEndChanged(it.toInt()) },
+                    valueRange = 0f..23f,
+                    steps = 22
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PermissionsScreen() {
+    val context = LocalContext.current
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "🔔",
+            fontSize = 60.sp
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Grant Permissions",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "To give you the best experience, we need a few permissions",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Notification Permission
+        PermissionCard(
+            icon = "🔔",
+            title = "Notification Permission",
+            description = "Required to remind you about eye breaks",
+            isRequired = true
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Exact Alarm Permission
+        PermissionCard(
+            icon = "⏰",
+            title = "Exact Alarm Permission",
+            description = "For accurate break timing and sleep calculator",
+            isRequired = true
+        )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "👁️", fontSize = 32.sp)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text ="You're all set to start taking care of your eyes!",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RuleCard(icon: String, title: String, description: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(text = icon, fontSize = 32.sp)
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun FactCard(text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.shapes.small
+                )
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+@Composable
+fun PermissionCard(icon: String, title: String, description: String, isRequired: Boolean) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(text = icon, fontSize = 40.sp)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (isRequired) {
+                        Text(
+                            text = "REQUIRED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -366,14 +861,39 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(
-                        onRequestNotificationPermission = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    var showOnboarding by remember { 
+                        mutableStateOf(!PreferencesHelper.isOnboardingCompleted(this@MainActivity)) 
+                    }
+                    
+                    if (showOnboarding) {
+                        OnboardingScreen(
+                            onComplete = {
+                                showOnboarding = false
+                                // Request permissions after onboarding
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                                    if (!alarmManager.canScheduleExactAlarms()) {
+                                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                                        startActivity(intent)
+                                    }
+                                }
+                                // Initialize reminders after onboarding
+                                initializeReminders()
                             }
-                        },
-                        permissionCheckTrigger = permissionCheckTrigger
-                    )
+                        )
+                    } else {
+                        MainScreen(
+                            onRequestNotificationPermission = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            },
+                            permissionCheckTrigger = permissionCheckTrigger
+                        )
+                    }
                 }
             }
         }
