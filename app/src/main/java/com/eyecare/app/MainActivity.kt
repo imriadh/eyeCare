@@ -2385,7 +2385,7 @@ fun AppearanceSettings() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Palette,
+                    imageVector = Icons.Default.Settings,
                     contentDescription = "Theme",
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -2449,7 +2449,7 @@ fun AppearanceSettings() {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AccessTime,
+                        imageVector = Icons.Default.Refresh,
                         contentDescription = "Auto Dark",
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.secondary
@@ -2502,7 +2502,7 @@ fun AppearanceSettings() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.LightMode,
+                    imageVector = Icons.Default.Star,
                     contentDescription = "Blue Light Filter",
                     modifier = Modifier.size(24.dp),
                     tint = androidx.compose.ui.graphics.Color(0xFFFF9500)
