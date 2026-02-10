@@ -4483,6 +4483,38 @@ private fun calculateWakeUpTime(baseTime: Calendar, minutesToAdd: Int): Calendar
 }
 
 @Composable
+fun PauseIcon(modifier: Modifier = Modifier) {
+    // Draw two vertical bars to represent pause symbol
+    Canvas(modifier = modifier) {
+        val barWidth = size.width * 0.25f
+        val barHeight = size.height * 0.8f
+        val spacing = size.width * 0.2f
+        
+        // Left bar
+        drawRoundRect(
+            color = androidx.compose.ui.graphics.Color.White,
+            topLeft = androidx.compose.ui.graphics.Offset(
+                x = (size.width - barWidth * 2 - spacing) / 2,
+                y = (size.height - barHeight) / 2
+            ),
+            size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+        )
+        
+        // Right bar
+        drawRoundRect(
+            color = androidx.compose.ui.graphics.Color.White,
+            topLeft = androidx.compose.ui.graphics.Offset(
+                x = (size.width - barWidth * 2 - spacing) / 2 + barWidth + spacing,
+                y = (size.height - barHeight) / 2
+            ),
+            size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+        )
+    }
+}
+
+@Composable
 fun BlueLightFilterOverlay(intensity: Int) {
     // Convert intensity (0-100) to alpha (0.0-0.5)
     val alpha = (intensity / 100f) * 0.5f
@@ -4608,69 +4640,104 @@ fun CountdownTimerCard(
                         } else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                         strokeCap = StrokeCap.Round
                     )
-                    // Timer text
+                    
+                    // Center content - Timer + Controls
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize()
                     ) {
+                        // Timer text at top
                         Text(
                             text = String.format("%02d:%02d", minutes, seconds),
-                            style = MaterialTheme.typography.displayLarge,
+                            style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 56.sp,
-                            letterSpacing = 2.sp
+                            fontSize = 48.sp,
+                            letterSpacing = 1.sp
                         )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Control buttons in center
+                        if (enabled) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Reset button (circular arrow shape)
+                                FilledTonalIconButton(
+                                    onClick = onStop,
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Reset",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                
+                                // Play/Pause button (triangle/pause bars) - LARGER
+                                FilledIconButton(
+                                    onClick = onTogglePause,
+                                    modifier = Modifier.size(64.dp),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = if (isPaused) 
+                                            MaterialTheme.colorScheme.primary
+                                        else 
+                                            MaterialTheme.colorScheme.tertiary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPaused) 
+                                            Icons.Default.PlayArrow  // Triangle shape
+                                        else 
+                                            Icons.Default.Settings,   // Pause bars (using settings as placeholder)
+                                        contentDescription = if (isPaused) "Start" else "Pause",
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            // Start button when timer is off
+                            FilledIconButton(
+                                onClick = onTogglePause,
+                                modifier = Modifier.size(64.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Start",
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        
                         Spacer(modifier = Modifier.height(4.dp))
+                        
+                        // Status text
                         Text(
-                            text = if (enabled && !isPaused) "minutes" else "",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            text = if (!enabled) "Tap to start"
+                                   else if (isPaused) "Paused" 
+                                   else "Running",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            fontSize = 12.sp
                         )
                     }
                 }
                 
-                // Control Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
-                ) {
-                    if (enabled) {
-                        // Reset button
-                        FilledTonalIconButton(
-                            onClick = onStop,
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Reset",
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        
-                        // Play/Pause button (larger, primary)
-                        FilledIconButton(
-                            onClick = onTogglePause,
-                            modifier = Modifier.size(72.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = if (isPaused) 
-                                    MaterialTheme.colorScheme.tertiary 
-                                else 
-                                    MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Settings,
-                                contentDescription = if (isPaused) "Resume" else "Pause",
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = "👁️",
-                            fontSize = 48.sp
-                        )
-                    }
-                }
+                // Bottom info text
+                Text(
+                    text = if (!enabled) "Start your eye care timer"
+                           else if (isPaused) "Timer is paused • Press ▶ to resume" 
+                           else "Take breaks every ${PreferencesHelper.getReminderInterval(LocalContext.current)} min",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
             }
         }
     }
