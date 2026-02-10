@@ -3732,6 +3732,30 @@ fun SyncFeatureItem(icon: String, text: String) {
 }
 
 @Composable
+fun SettingsSectionHeader(icon: String, title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = icon, fontSize = 20.sp)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+    HorizontalDivider(
+        modifier = Modifier.padding(bottom = 12.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+        thickness = 1.dp
+    )
+}
+
+@Composable
 fun SettingsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     val isSignedIn = remember { mutableStateOf(PreferencesHelper.isUserSignedIn(context)) }
@@ -3740,13 +3764,28 @@ fun SettingsScreen(paddingValues: PaddingValues) {
     val userPhotoUrl = remember { mutableStateOf(PreferencesHelper.getUserPhotoUrl(context)) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     
+    // Notification Settings
+    var soundEnabled by remember { mutableStateOf(PreferencesHelper.isSoundEnabled(context)) }
+    var vibrationEnabled by remember { mutableStateOf(PreferencesHelper.isVibrationEnabled(context)) }
+    var nonDismissible by remember { mutableStateOf(PreferencesHelper.isNonDismissible(context)) }
+    val quietStart = remember { mutableStateOf(PreferencesHelper.getQuietHoursStart(context)) }
+    val quietEnd = remember { mutableStateOf(PreferencesHelper.getQuietHoursEnd(context)) }
+    var showQuietHoursPicker by remember { mutableStateOf(false) }
+    var isSelectingQuietStart by remember { mutableStateOf(true) }
+    
+    // Timer Settings
+    val selectedPreset = remember { mutableStateOf(PreferencesHelper.getSelectedPreset(context)) }
+    val currentInterval = remember { mutableStateOf(PreferencesHelper.getReminderInterval(context)) }
+    val currentDuration = remember { mutableStateOf(PreferencesHelper.getBreakDuration(context)) }
+    var smartBreaksEnabled by remember { mutableStateOf(PreferencesHelper.isSmartBreaksEnabled(context)) }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // User Profile Card (shown when signed in)
         if (isSignedIn.value) {
@@ -3883,14 +3922,11 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             )
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "👁️",
-                    fontSize = 72.sp
-                )
+                Text(text = "👁️", fontSize = 56.sp)
                 Text(
                     text = "Eye Care App",
                     style = MaterialTheme.typography.headlineSmall,
@@ -3899,69 +3935,563 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 Text(
                     text = "Version 4.0",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
-                Text(
-                    text = "Protect your eyes with the 20-20-20 rule",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
             }
         }
         
-        Text(
-            text = "🎨 Appearance",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        // 🔔 NOTIFICATIONS SECTION
+        SettingsSectionHeader("🔔", "Notifications")
+        
+        // Sound Toggle
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "🔊", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Sound",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Play sound with notifications",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = soundEnabled,
+                    onCheckedChange = {
+                        soundEnabled = it
+                        PreferencesHelper.setSoundEnabled(context, it)
+                        if (PreferencesHelper.areRemindersEnabled(context)) {
+                            TimerNotificationService.stopService(context)
+                            TimerNotificationService.startService(context)
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Vibration Toggle
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "📳", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Vibration",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Vibrate on notifications",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = vibrationEnabled,
+                    onCheckedChange = {
+                        vibrationEnabled = it
+                        PreferencesHelper.setVibrationEnabled(context, it)
+                        if (PreferencesHelper.areRemindersEnabled(context)) {
+                            TimerNotificationService.stopService(context)
+                            TimerNotificationService.startService(context)
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Quiet Hours
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { 
+                    isSelectingQuietStart = true
+                    showQuietHoursPicker = true 
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "🌙", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Quiet Hours",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${formatHour(quietStart.value)} - ${formatHour(quietEnd.value)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
+            }
+        }
+        
+        // Non-Dismissible Toggle
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (nonDismissible) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surface
+                }
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = if (nonDismissible) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        } else {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "🔒", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Non-Dismissible",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Prevent accidental swipe",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = nonDismissible,
+                    onCheckedChange = {
+                        nonDismissible = it
+                        PreferencesHelper.setNonDismissible(context, it)
+                        if (PreferencesHelper.areRemindersEnabled(context)) {
+                            TimerNotificationService.stopService(context)
+                            TimerNotificationService.startService(context)
+                        }
+                    }
+                )
+            }
+        }
+        
+        // ⏰ TIMER SETTINGS SECTION
+        SettingsSectionHeader("⏰", "Timer Settings")
+        
+        // Break Rule Preset
+        val presetInfo = getBreakRulePresets().find { it.id == selectedPreset.value }
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    // Open break rules settings (could navigate or expand)
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = presetInfo?.icon ?: "⏰", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Break Rule",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = presetInfo?.name ?: "Custom",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
+            }
+        }
+        
+        // Interval & Duration
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Interval",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${currentInterval.value} minutes",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Break Duration",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${currentDuration.value} seconds",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Smart Breaks Toggle
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (smartBreaksEnabled) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surface
+                }
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = if (smartBreaksEnabled) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        } else {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "🧠", fontSize = 22.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Smart Breaks",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Auto-pause during quiet hours",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = smartBreaksEnabled,
+                    onCheckedChange = {
+                        smartBreaksEnabled = it
+                        PreferencesHelper.setSmartBreaksEnabled(context, it)
+                    }
+                )
+            }
+        }
+        
+        // 📊 STATS & DATA SECTION
+        SettingsSectionHeader("📊", "Stats & Data")
+        
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    // Navigate to stats screen
+                    Toast.makeText(context, "Navigate to Statistics tab", Toast.LENGTH_SHORT).show()
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.BarChart,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "View Statistics",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "See your progress",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
+            }
+        }
+        
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    Toast.makeText(context, "Export data feature coming soon", Toast.LENGTH_SHORT).show()
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Download,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Export Data",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Download your statistics",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
+            }
+        }
+        
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    Toast.makeText(context, "Reset statistics (confirmation needed)", Toast.LENGTH_LONG).show()
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Reset Statistics",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "Clear all data",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        
+        // 🎨 APPEARANCE SECTION
+        SettingsSectionHeader("🎨", "Appearance")
         
         AppearanceSettings()
         
-        Text(
-            text = "📚 About",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        // Info About Current Break Rule
-        val selectedPreset = PreferencesHelper.getSelectedPreset(context)
-        val currentInterval = PreferencesHelper.getReminderInterval(context)
-        val currentDuration = PreferencesHelper.getBreakDuration(context)
-        val presetInfo = getBreakRulePresets().find { it.id == selectedPreset }
+        // 🌙 SLEEP SECTION
+        SettingsSectionHeader("🌙", "Sleep")
         
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = presetInfo?.icon ?: "⏰", fontSize = 24.sp)
+                    Text(text = "😴", fontSize = 24.sp)
                     Text(
-                        text = presetInfo?.name ?: "Your Break Rule",
+                        text = "Sleep Cycles",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Text(
-                    text = "Every $currentInterval minutes, take a $currentDuration-second break to look at something 20 feet away. This simple rule helps reduce eye strain, prevent headaches, and maintain healthy vision during screen time.",
+                    text = "A complete sleep cycle lasts about 90 minutes. Waking up at the end of a cycle helps you feel more refreshed. Use the Sleep tab to calculate your optimal wake-up times!",
                     style = MaterialTheme.typography.bodyMedium,
-                    lineHeight = 22.sp
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         
+        // ℹ️ ABOUT SECTION
+        SettingsSectionHeader("ℹ️", "About")
+        
         // Why It Matters
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
@@ -3978,83 +4508,13 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 Text(
                     text = "Digital eye strain affects up to 90% of screen users. Regular breaks help prevent dry eyes, blurred vision, and headaches while improving focus and productivity.",
                     style = MaterialTheme.typography.bodyMedium,
-                    lineHeight = 22.sp
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         
-        // Sleep Cycle Info
-        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(text = "😴", fontSize = 24.sp)
-                    Text(
-                        text = "Sleep Cycles",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Text(
-                    text = "A complete sleep cycle lasts about 90 minutes. Waking up at the end of a cycle helps you feel more refreshed than waking in the middle of one. Use our Sleep tab to find your optimal wake-up times!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    lineHeight = 22.sp
-                )
-            }
-        }
-        
-        // Smart Breaks Settings
-        Text(
-            text = "🧠 Smart Breaks",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        SmartBreaksSettings()
-        
-        Text(
-            text = "⏱️ Break Rules",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        BreakRulesSettings()
-        
-        Text(
-            text = "🏥 Health & Wellness",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        HealthRemindersSettings()
-        
-        Text(
-            text = "☁️ Multi-Device Sync",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        MultiDeviceSyncSettings()
-        
-        Text(
-            text = "🔔 Notification Settings",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        NotificationManagementSettings()
-        
-        Text(
-            text = "⚙️ Quick Actions",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
+        // Advanced Settings Access
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -4068,7 +4528,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -4078,14 +4538,14 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                 ) {
                     Surface(
                         shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                         modifier = Modifier.size(40.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Default.Settings,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }
@@ -4093,11 +4553,139 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                         Text(
                             text = "App Permissions",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Manage notifications & settings",
+                            text = "Manage system settings",
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
+            }
+        }
+        
+        // Developer Info
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Developed by",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Riad Hossain",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                OutlinedCard(
+                    modifier = Modifier
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://riad.iam.bd"))
+                            context.startActivity(intent)
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "riad.iam.bd",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                Text(
+                    text = "© 2026 All Rights Reserved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Text(
+                    text = "Made with ❤️ for eye health",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+    
+    // Quiet Hours Time Picker Dialog
+    if (showQuietHoursPicker) {
+        TimePickerDialog(
+            onDismiss = { showQuietHoursPicker = false },
+            onTimeSelected = { hour, minute ->
+                val hourInt = hour // Already in 24h format from TimePickerDialog
+                if (isSelectingQuietStart) {
+                    quietStart.value = hourInt
+                    PreferencesHelper.setQuietHoursStart(context, hourInt)
+                    isSelectingQuietStart = false
+                    // Immediately show picker for end time
+                    showQuietHoursPicker = true
+                } else {
+                    quietEnd.value = hourInt
+                    PreferencesHelper.setQuietHoursEnd(context, hourInt)
+                    showQuietHoursPicker = false
+                }
+            }
+        )
+    }
+    
+    // Sign Out Confirmation Dialog
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = { Text("Sign Out?") },
+            text = { Text("Are you sure you want to sign out? Your data will remain on this device.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        PreferencesHelper.signOutUser(context)
+                        isSignedIn.value = false
+                        Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
+                        showSignOutDialog = false
+                    }
+                ) {
+                    Text("Sign Out")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
