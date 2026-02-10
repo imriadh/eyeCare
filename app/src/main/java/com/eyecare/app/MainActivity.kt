@@ -4327,11 +4327,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                         modifier = Modifier.size(40.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.BarChart,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
+                            Text(text = "📊", fontSize = 22.sp)
                         }
                     }
                     Column {
@@ -4375,11 +4371,7 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                         modifier = Modifier.size(40.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Download,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
+                            Text(text = "💾", fontSize = 22.sp)
                         }
                     }
                     Column {
