@@ -65,10 +65,18 @@ class EyeCareWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // Get break duration from preferences
+        val breakDuration = PreferencesHelper.getBreakDuration(context)
+        val durationText = if (breakDuration >= 60) {
+            "${breakDuration / 60} minute${if (breakDuration / 60 > 1) "s" else ""}"
+        } else {
+            "$breakDuration seconds"
+        }
+
         // Build the notification with sound if enabled
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle("Eye Care Reminder 👁️")
-            .setContentText("Take a 20-second break to look away from the screen!")
+            .setContentText("Take a $durationText break to look away from the screen!")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -77,7 +85,7 @@ class EyeCareWorker(
                 NotificationCompat.BigTextStyle()
                     .bigText("🌿 Break Instructions:\n" +
                             "1. Look at something 20 feet (6 meters) away\n" +
-                            "2. Keep looking for 20 seconds\n" +
+                            "2. Keep looking for $durationText\n" +
                             "3. Blink frequently to refresh your eyes\n" +
                             "4. Gently stretch your neck and shoulders")
             )

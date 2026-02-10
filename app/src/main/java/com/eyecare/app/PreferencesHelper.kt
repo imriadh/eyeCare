@@ -52,8 +52,13 @@ object PreferencesHelper {
     private const val KEY_QUIET_HOURS_START = "quiet_hours_start"
     private const val KEY_QUIET_HOURS_END = "quiet_hours_end"
     
+    // Break Rule Keys
+    private const val KEY_BREAK_DURATION = "break_duration"
+    private const val KEY_SELECTED_PRESET = "selected_preset"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
+    const val DEFAULT_BREAK_DURATION = 20 // seconds
     const val DEFAULT_WORK_START = 8 // 8 AM
     const val DEFAULT_WORK_END = 18 // 6 PM
     const val DEFAULT_QUIET_START = 22 // 10 PM
@@ -138,6 +143,24 @@ object PreferencesHelper {
     
     fun setLastDismissedTime(context: Context, timeMillis: Long) {
         getPrefs(context).edit().putLong(KEY_LAST_DISMISSED_TIME, timeMillis).apply()
+    }
+    
+    // Break Duration (in seconds)
+    fun getBreakDuration(context: Context): Int {
+        return getPrefs(context).getInt(KEY_BREAK_DURATION, DEFAULT_BREAK_DURATION)
+    }
+    
+    fun setBreakDuration(context: Context, seconds: Int) {
+        getPrefs(context).edit().putInt(KEY_BREAK_DURATION, seconds).apply()
+    }
+    
+    // Selected Preset
+    fun getSelectedPreset(context: Context): String {
+        return getPrefs(context).getString(KEY_SELECTED_PRESET, "20-20-20") ?: "20-20-20"
+    }
+    
+    fun setSelectedPreset(context: Context, preset: String) {
+        getPrefs(context).edit().putString(KEY_SELECTED_PRESET, preset).apply()
     }
     
     // Calculate time remaining until next break

@@ -75,6 +75,66 @@ data class Achievement(
 )
 
 /**
+ * Break Rule Preset Data Class
+ */
+data class BreakRulePreset(
+    val id: String,
+    val name: String,
+    val description: String,
+    val icon: String,
+    val intervalMinutes: Int,
+    val durationSeconds: Int
+)
+
+/**
+ * Get all break rule presets
+ */
+fun getBreakRulePresets(): List<BreakRulePreset> {
+    return listOf(
+        BreakRulePreset(
+            id = "20-20-20",
+            name = "20-20-20 Rule",
+            description = "Classic eye care • Every 20 min, 20 sec break",
+            icon = "👁️",
+            intervalMinutes = 20,
+            durationSeconds = 20
+        ),
+        BreakRulePreset(
+            id = "30-20-20",
+            name = "30-20-20",
+            description = "For developers • Longer focus time",
+            icon = "💻",
+            intervalMinutes = 30,
+            durationSeconds = 20
+        ),
+        BreakRulePreset(
+            id = "15-15-15",
+            name = "15-15-15",  
+            description = "Intense work • Frequent short breaks",
+            icon = "⚡",
+            intervalMinutes = 15,
+            durationSeconds = 15
+        ),
+        BreakRulePreset(
+            id = "50-10",
+            name = "50-10 Pomodoro",
+            description = "Pomodoro style • Long focus, short eye rest",
+            icon = "🍅",
+            intervalMinutes = 50,
+            durationSeconds = 10
+        ),
+        BreakRulePreset(
+            id = "custom",
+            name = "Custom",
+            description = "Define your own interval and duration",
+            icon = "⚙️",
+            intervalMinutes = 20,
+            durationSeconds = 20
+        )
+    )
+}
+
+/**
  * Get all achievements
  */
 fun getAllAchievements(): List<Achievement> {
@@ -1899,6 +1959,194 @@ fun NotificationManagementSettings() {
 }
 
 @Composable
+fun BreakRulesSettings() {
+    val context = LocalContext.current
+    val presets = remember { getBreakRulePresets() }
+    var selectedPresetId by remember { mutableStateOf(PreferencesHelper.getSelectedPreset(context)) }
+    var customInterval by remember { mutableStateOf(PreferencesHelper.getReminderInterval(context).toFloat()) }
+    var customDuration by remember { mutableStateOf(PreferencesHelper.getBreakDuration(context)) }
+    var showCustomDialog by remember { mutableStateOf(false) }
+    
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Preset Cards
+        presets.forEach { preset ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (preset.id == "custom") {
+                            showCustomDialog = true
+                        } else {
+                            selectedPresetId = preset.id
+                            PreferencesHelper.setSelectedPreset(context, preset.id)
+                            PreferencesHelper.setReminderInterval(context, preset.intervalMinutes)
+                            PreferencesHelper.setBreakDuration(context, preset.durationSeconds)
+                            
+                            // Restart timer with new settings
+                            if (PreferencesHelper.areRemindersEnabled(context)) {
+                                PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                                TimerNotificationService.stopService(context)
+                                TimerNotificationService.startService(context)
+                                EyeCareWidgetProvider.updateAllWidgets(context)
+                            }
+                        }
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = if (selectedPresetId == preset.id) 
+                        MaterialTheme.colorScheme.primaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = if (selectedPresetId == preset.id) 6.dp else 2.dp
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = preset.icon, fontSize = 28.sp)
+                        Column {
+                            Text(
+                                text = preset.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = preset.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (preset.id != "custom") {
+                                Text(
+                                    text = "${preset.intervalMinutes} min • ${preset.durationSeconds} sec break",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else if (selectedPresetId == "custom") {
+                                Text(
+                                    text = "${customInterval.toInt()} min • ${customDuration} sec break",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    if (selectedPresetId == preset.id) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Selected",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    // Custom Settings Dialog
+    if (showCustomDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomDialog = false },
+            title = { Text("⚙️ Custom Break Rule") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Interval Slider
+                    Column {
+                        Text(
+                            text = "Break Interval: ${customInterval.toInt()} minutes",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Slider(
+                            value = customInterval,
+                            onValueChange = { customInterval = it },
+                            valueRange = 5f..60f,
+                            steps = 54
+                        )
+                        Text(
+                            text = "How often to take breaks",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    HorizontalDivider()
+                    
+                    // Duration Selector
+                    Column {
+                        Text(
+                            text = "Break Duration",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(10, 15, 20, 30, 60).forEach { duration ->
+                                FilterChip(
+                                    selected = customDuration == duration,
+                                    onClick = { customDuration = duration },
+                                    label = {
+                                        Text(
+                                            text = if (duration < 60) "${duration}s" else "1m",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                        Text(
+                            text = "How long each break should last",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        selectedPresetId = "custom"
+                        PreferencesHelper.setSelectedPreset(context, "custom")
+                        PreferencesHelper.setReminderInterval(context, customInterval.toInt())
+                        PreferencesHelper.setBreakDuration(context, customDuration)
+                        
+                        // Restart timer with new settings
+                        if (PreferencesHelper.areRemindersEnabled(context)) {
+                            PreferencesHelper.setLastNotificationTime(context, System.currentTimeMillis())
+                            TimerNotificationService.stopService(context)
+                            TimerNotificationService.startService(context)
+                            EyeCareWidgetProvider.updateAllWidgets(context)
+                        }
+                        
+                        showCustomDialog = false
+                    }
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
 fun SettingsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
     
@@ -1955,7 +2203,12 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             fontWeight = FontWeight.Bold
         )
         
-        // Info About 20-20-20 Rule
+        // Info About Current Break Rule
+        val selectedPreset = PreferencesHelper.getSelectedPreset(context)
+        val currentInterval = PreferencesHelper.getReminderInterval(context)
+        val currentDuration = PreferencesHelper.getBreakDuration(context)
+        val presetInfo = getBreakRulePresets().find { it.id == selectedPreset }
+        
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -1965,15 +2218,15 @@ fun SettingsScreen(paddingValues: PaddingValues) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = "⏰", fontSize = 24.sp)
+                    Text(text = presetInfo?.icon ?: "⏰", fontSize = 24.sp)
                     Text(
-                        text = "The 20-20-20 Rule",
+                        text = presetInfo?.name ?: "Your Break Rule",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Text(
-                    text = "Every 20 minutes, take a 20-second break to look at something 20 feet away. This simple rule helps reduce eye strain, prevent headaches, and maintain healthy vision during screen time.",
+                    text = "Every $currentInterval minutes, take a $currentDuration-second break to look at something 20 feet away. This simple rule helps reduce eye strain, prevent headaches, and maintain healthy vision during screen time.",
                     style = MaterialTheme.typography.bodyMedium,
                     lineHeight = 22.sp
                 )
@@ -2038,6 +2291,14 @@ fun SettingsScreen(paddingValues: PaddingValues) {
         )
         
         SmartBreaksSettings()
+        
+        Text(
+            text = "⏱️ Break Rules",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        
+        BreakRulesSettings()
         
         Text(
             text = "🔔 Notification Settings",
@@ -3133,6 +3394,14 @@ fun RemindersCard(
 
 @Composable
 fun BreakInstructionsCard() {
+    val context = LocalContext.current
+    val breakDuration = PreferencesHelper.getBreakDuration(context)
+    val durationText = if (breakDuration >= 60) {
+        "${breakDuration / 60} minute${if (breakDuration / 60 > 1) "s" else ""}"
+    } else {
+        "$breakDuration seconds"
+    }
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -3154,7 +3423,7 @@ fun BreakInstructionsCard() {
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "2️⃣ Keep looking for at least 20 seconds",
+                text = "2️⃣ Keep looking for at least $durationText",
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
