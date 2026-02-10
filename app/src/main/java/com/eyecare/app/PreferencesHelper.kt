@@ -83,6 +83,12 @@ object PreferencesHelper {
     private const val KEY_AUTO_DARK_MODE_TRIGGER_MINUTES = "auto_dark_mode_trigger_minutes"
     private const val KEY_SCREEN_TIME_START = "screen_time_start"
     
+    // User Profile Keys
+    private const val KEY_USER_EMAIL = "user_email"
+    private const val KEY_USER_NAME = "user_name"
+    private const val KEY_USER_PHOTO_URL = "user_photo_url"
+    private const val KEY_IS_SIGNED_IN = "is_signed_in"
+    
     // Default values
     const val DEFAULT_REMINDER_INTERVAL = 20 // minutes
     const val DEFAULT_BREAK_DURATION = 20 // seconds
@@ -734,5 +740,40 @@ object PreferencesHelper {
         val startTime = getScreenTimeStart(context)
         if (startTime == 0L) return 0L
         return (System.currentTimeMillis() - startTime) / 60000 // Convert to minutes
+    }
+    
+    // User Profile Management
+    fun saveUserProfile(context: Context, email: String, name: String?, photoUrl: String?) {
+        getPrefs(context).edit()
+            .putString(KEY_USER_EMAIL, email)
+            .putString(KEY_USER_NAME, name)
+            .putString(KEY_USER_PHOTO_URL, photoUrl)
+            .putBoolean(KEY_IS_SIGNED_IN, true)
+            .apply()
+    }
+    
+    fun isUserSignedIn(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_IS_SIGNED_IN, false)
+    }
+    
+    fun getUserEmail(context: Context): String? {
+        return getPrefs(context).getString(KEY_USER_EMAIL, null)
+    }
+    
+    fun getUserName(context: Context): String? {
+        return getPrefs(context).getString(KEY_USER_NAME, null)
+    }
+    
+    fun getUserPhotoUrl(context: Context): String? {
+        return getPrefs(context).getString(KEY_USER_PHOTO_URL, null)
+    }
+    
+    fun signOutUser(context: Context) {
+        getPrefs(context).edit()
+            .putBoolean(KEY_IS_SIGNED_IN, false)
+            .putString(KEY_USER_EMAIL, null)
+            .putString(KEY_USER_NAME, null)
+            .putString(KEY_USER_PHOTO_URL, null)
+            .apply()
     }
 }

@@ -1008,11 +1008,21 @@ class MainActivity : ComponentActivity() {
         try {
             val account = completedTask.getResult(ApiException::class.java)
             val email = account?.email
+            val displayName = account?.displayName
+            val photoUrl = account?.photoUrl?.toString()
             
             if (email != null) {
+                // Save user info to preferences
+                PreferencesHelper.saveUserProfile(
+                    this@MainActivity,
+                    email = email,
+                    name = displayName,
+                    photoUrl = photoUrl
+                )
+                
                 Toast.makeText(
                     this@MainActivity,
-                    "✓ Signed in as $email",
+                    "✓ Welcome, ${displayName ?: email}!",
                     Toast.LENGTH_SHORT
                 ).show()
                 
@@ -3723,6 +3733,11 @@ fun SyncFeatureItem(icon: String, text: String) {
 @Composable
 fun SettingsScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
+    val isSignedIn = remember { mutableStateOf(PreferencesHelper.isUserSignedIn(context)) }
+    val userName = remember { mutableStateOf(PreferencesHelper.getUserName(context)) }
+    val userEmail = remember { mutableStateOf(PreferencesHelper.getUserEmail(context)) }
+    val userPhotoUrl = remember { mutableStateOf(PreferencesHelper.getUserPhotoUrl(context)) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -3732,6 +3747,124 @@ fun SettingsScreen(paddingValues: PaddingValues) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // User Profile Card (shown when signed in)
+        if (isSignedIn.value) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // User Photo
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (userPhotoUrl.value != null) {
+                            // TODO: Load image from URL using Coil library
+                            // For now, show initials
+                            Text(
+                                text = userName.value?.firstOrNull()?.uppercase() ?: "U",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text(
+                                text = userName.value?.firstOrNull()?.uppercase() ?: "U",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                    
+                    // User Info
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = userName.value ?: "User",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = userEmail.value ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Signed In",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Signed In",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    
+                    // Sign Out Button
+                    IconButton(
+                        onClick = { showSignOutDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Sign Out",
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Sign Out Confirmation Dialog
+        if (showSignOutDialog) {
+            AlertDialog(
+                onDismissRequest = { showSignOutDialog = false },
+                title = { Text("Sign Out?") },
+                text = { Text("Are you sure you want to sign out? Your data will remain on this device.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            PreferencesHelper.signOutUser(context)
+                            isSignedIn.value = false
+                            Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
+                            showSignOutDialog = false
+                        }
+                    ) {
+                        Text("Sign Out")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSignOutDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
         // App Info Card
         Card(
             modifier = Modifier.fillMaxWidth(),
